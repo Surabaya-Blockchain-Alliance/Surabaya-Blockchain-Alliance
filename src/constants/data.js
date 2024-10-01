@@ -14,7 +14,7 @@ const Menu = [{
     },
     {
         text: 'Quest',
-        link: 'Available Quest',
+        link: 'QuestPage',
     },
 ];
 
