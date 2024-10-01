@@ -17,10 +17,3 @@ We engage in research to explore new blockchain use cases and improve existing t
 
 Interested in blockchain technology? Join our community and contribute to the future of decentralized solutions!
 
-- Follow us on [Twitter](https://x.com/comunity_node)
-- Join our [Discord](https://discord.gg/GXeuEBe3VX) community
-- Visit our website [ComunityNode.com](https://comunitynode.my.id) for more information
-
-## Contact Us
-
-For inquiries or collaborations, please email us at alfset5@gmail.com.
