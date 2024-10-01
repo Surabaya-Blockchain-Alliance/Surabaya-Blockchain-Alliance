@@ -1,0 +1,16 @@
+/* Loading.css */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
+    background-color: #fff; /* or any color that matches your splash screen background */
+  }
+  
+  .loading-container img {
+    /* Adjust as needed for your specific GIF */
+    width: 100px; /* Example width */
+    height: auto; /* Maintain aspect ratio */
+  }
+  
