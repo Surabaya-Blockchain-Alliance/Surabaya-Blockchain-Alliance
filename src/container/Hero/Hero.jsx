@@ -17,31 +17,36 @@ const Hero = () => {
     <div className="hero">
       <div className="row align-items-center">
         <div className="col-md-6 col-12">
-          <h1 className="title fade-in">Stake, Earn, And Learn about Blockchain Project with us</h1>
-        </div>
-        <div className="col-md-6 col-12">
-          <Card className="green-card fade-in">
-            <Card.Body>
-              <Card.Title>Staking Stats</Card.Title>
-              <Card.Text><strong>Assets Staked:</strong> {stats.assetsStaked}</Card.Text>
-              <Card.Text><strong>Total Nodes Supported:</strong> {stats.totalNodes}</Card.Text>
-              <Card.Text><strong>Total Delegators:</strong> {stats.totalDelegators}</Card.Text>
-            </Card.Body>
-          </Card>
+          <h1 className="title fade-in">Learn and connect globally in Cardano with us</h1>
         </div>
       </div>
 
       {/* Adding the Supported Network Heading */}
-      <div className="supported-network-title">Supported Network</div>
+      <div className="supported-network-title">Latest Event</div>
 
       <div className="clients">
-        <div className="running-logos">
+        <div className="running-cards">
           {logos.map((logo, index) => (
-            <img key={index} src={images[logo]} alt="logo" />
+            <Card key={index} className="running-card">
+              <Card.Img variant="top" src={images[logo]} alt="logo" />
+              <Card.Body>
+                <Card.Title>{logo.replace("logo", "Logo ")}</Card.Title>
+                <Card.Text>
+                  Latest Event on host
+                </Card.Text>
+              </Card.Body>
+            </Card>
           ))}
-          {/* Duplicate logos for a seamless loop */}
           {logos.map((logo, index) => (
-            <img key={`duplicate-${index}`} src={images[logo]} alt="logo" />
+            <Card key={`duplicate-${index}`} className="running-card">
+              <Card.Img variant="top" src={images[logo]} alt="logo" />
+              <Card.Body>
+                <Card.Title>{logo.replace("logo", "Logo ")}</Card.Title>
+                <Card.Text>
+                  This is a brief description of the logo.
+                </Card.Text>
+              </Card.Body>
+            </Card>
           ))}
         </div>
       </div>

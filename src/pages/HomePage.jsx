@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { CaseStudies, Footer, Hero, Process, Services, Team, CTA } from '../container';
 import { Menu } from '../components';
-import Loading from '../Loading'; // Make sure this path is correct
+import Loading from '../Loading'; 
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);

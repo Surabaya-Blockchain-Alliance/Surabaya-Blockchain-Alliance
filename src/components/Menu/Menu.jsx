@@ -11,7 +11,7 @@ const Menu = () => {
     return (
         <Navbar collapseOnSelect expand="lg" bg="light" variant="light">
             <Container>
-                <Navbar.Brand href="#home">Community Node</Navbar.Brand>
+                <Navbar.Brand href="#home">Cradano HUB</Navbar.Brand>
                 <Navbar.Toggle aria-controls="responsive-navbar-nav" />
                 <Navbar.Collapse id="responsive-navbar-nav">
                     <Nav className="mx-auto">
@@ -21,7 +21,7 @@ const Menu = () => {
                         ))}
                     </Nav>
                     <Nav>
-                        <Button variant="outline-primary" href="#explorer">Explorer</Button> {/* Explorer button */}
+                        <Button variant="outline-primary" href="#explorer">Connect Wallet</Button> 
                     </Nav>
                 </Navbar.Collapse>
             </Container>
