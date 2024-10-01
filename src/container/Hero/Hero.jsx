@@ -17,29 +17,18 @@ const Hero = () => {
     <div className="hero">
       <div className="row align-items-center">
         <div className="col-md-6 col-12">
-          <h1 className="title fade-in">Stake, Earn, And Learn about Blockchain Project with us</h1>
-        </div>
-        <div className="col-md-6 col-12">
-          <Card className="green-card fade-in">
-            <Card.Body>
-              <Card.Title>Staking Stats</Card.Title>
-              <Card.Text><strong>Assets Staked:</strong> {stats.assetsStaked}</Card.Text>
-              <Card.Text><strong>Total Nodes Supported:</strong> {stats.totalNodes}</Card.Text>
-              <Card.Text><strong>Total Delegators:</strong> {stats.totalDelegators}</Card.Text>
-            </Card.Body>
-          </Card>
+          <h1 className="title fade-in">Learn and connect from gloablly in cardano with us</h1>
         </div>
       </div>
 
       {/* Adding the Supported Network Heading */}
-      <div className="supported-network-title">Supported Network</div>
+      <div className="supported-network-title">Event</div>
 
       <div className="clients">
         <div className="running-logos">
           {logos.map((logo, index) => (
             <img key={index} src={images[logo]} alt="logo" />
           ))}
-          {/* Duplicate logos for a seamless loop */}
           {logos.map((logo, index) => (
             <img key={`duplicate-${index}`} src={images[logo]} alt="logo" />
           ))}
