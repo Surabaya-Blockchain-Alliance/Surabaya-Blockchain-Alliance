@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { CaseStudies, Footer, Hero, Process, Services, Team } from '../container';
 import { Menu } from '../components';
-import Loading from '../Loading'; 
+import Loading from '../Loading';
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +27,7 @@ const HomePage = () => {
           <Process />
           <Team />
           <Footer />
-        </div>    
+        </div>
       )}
     </>
   );
