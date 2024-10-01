@@ -3,6 +3,8 @@
     "version": "0.1.0",
     "private": true,
     "dependencies": {
+        "@cardano-foundation/cardano-connect-with-wallet": "^0.2.9",
+        "@cardano-foundation/cardano-connect-with-wallet-core": "^0.2.5",
         "@craco/craco": "^7.1.0",
         "@popperjs/core": "^2.11.8",
         "@testing-library/jest-dom": "^5.16.5",
