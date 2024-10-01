@@ -16,7 +16,6 @@ const Menu = [{
         text: 'Quest',
         link: 'Available Quest',
     },
-
 ];
 
 const ServicesData = [{
@@ -80,7 +79,6 @@ const CaseStudies = [{
     },
 ];
 
-
 const WorkingProcess = [{
         title: 'Our Recent Cardano Development',
         description: 'Our latest project focuses on creating and managing decentralized applications on the Cardano blockchain. Thanks to the Cardano community for their belief and support in our efforts to enhance the ecosystem.',
@@ -103,42 +101,49 @@ const WorkingProcess = [{
     },
 ];
 
-const Team = [{
-        name: 'Alf',
-        position: 'Founder',
+// Change Team data to Partnership data
+const Partnership = [{
+        name: 'Community Node',
+        position: 'Partner',
         info: '2+ years of experience in Cardano development, system security, and leading DApp projects.',
         linkedin: '#',
+        foto: '../assets/logo.png'
     },
     {
-        name: 'Tirs',
-        position: 'Director of Operations',
+        name: 'Perta',
+        position: 'Partner',
         info: '5+ years of experience in project management and leadership within the blockchain space.',
         linkedin: '#',
+        foto: 'path/to/perta_logo.jpg', // Add logo URL here
     },
     {
-        name: 'Elanarcy',
-        position: 'Blockchain Specialist',
+        name: 'SPBU',
+        position: 'Partner',
         info: '3+ years of experience in implementing and managing blockchain solutions on Cardano.',
         linkedin: '#',
+        foto: 'path/to/spbu_logo.jpg', // Add logo URL here
     },
     {
-        name: 'Alfin Sug',
-        position: 'Fullstack Web3 Developer',
+        name: 'DKJAK',
+        position: 'Partner',
         info: '3+ years of experience in building decentralized applications on the Cardano blockchain.',
         linkedin: '#',
+        foto: 'path/to/dkjaks_logo.jpg', // Add logo URL here
     },
     {
-        name: 'Afif Abdillah',
-        position: 'DevOps Manager',
-        info: '3+ years of experience in managing and optimizing blockchain infrastructure on Cardano.',
+        name: 'DEFI',
+        position: 'Partner',
+        info: 'Defi Service',
         linkedin: '#',
+        foto: 'path/to/defi_logo.jpg', // Add logo URL here
     },
 ];
+
 
 export default {
     Menu,
     CaseStudies,
     WorkingProcess,
-    Team,
+    Partnership,
     ServicesData
 };
