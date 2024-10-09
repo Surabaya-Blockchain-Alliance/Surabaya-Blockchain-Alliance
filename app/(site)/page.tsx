@@ -30,10 +30,10 @@ export default function Home() {
       <FunFact />
       <Integration />
       <CTA />
-      <FAQ />
       <Testimonial />
-      <Pricing />
-      <Contact />
+      <FAQ />
+      {/* <Pricing /> */}
+      {/* <Contact /> */}
       <Blog />
     </main>
   );

@@ -1,14 +1,13 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useState } from "react";
 import FeaturesTabItem from "./FeaturesTabItem";
 import featuresTabData from "./featuresTabData";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import { Navigation, Pagination } from 'swiper';
+import { Autoplay, Navigation, Pagination } from 'swiper';
 import { motion } from "framer-motion";
 
 const FeaturesTab = () => {
@@ -16,18 +15,17 @@ const FeaturesTab = () => {
   // Create references for custom navigation buttons
   const prevRef = useRef(null);
   const nextRef = useRef(null);
-  const [swiperInstance, setSwiperInstance] = useState(null);
+  const swiperRef = useRef(null); // Define swiperRef for managing Swiper instance
 
   useEffect(() => {
-    if (swiperInstance && swiperInstance.params) {
+    if (swiperRef.current && swiperRef.current.params) {
       // Assign the custom buttons after the Swiper instance is ready
-      swiperInstance.params.navigation.prevEl = prevRef.current;
-      swiperInstance.params.navigation.nextEl = nextRef.current;
-      swiperInstance.navigation.init();
-      swiperInstance.navigation.update();
+      swiperRef.current.params.navigation.prevEl = prevRef.current;
+      swiperRef.current.params.navigation.nextEl = nextRef.current;
+      swiperRef.current.navigation.init();
+      swiperRef.current.navigation.update();
     }
-  }, [swiperInstance]);
-
+  }, [swiperRef]);
 
   return (
     <>
@@ -49,14 +47,13 @@ const FeaturesTab = () => {
             />
           </div>
 
-          {/* <!-- Tab Menues Start --> */}
+          {/* <!-- Tab Menus Start --> */}
           <motion.div
             variants={{
               hidden: {
                 opacity: 0,
                 y: -20,
               },
-
               visible: {
                 opacity: 1,
                 y: 0,
@@ -70,10 +67,11 @@ const FeaturesTab = () => {
           >
             <div
               onClick={() => setCurrentTab("latest")}
-              className={`relative flex w-full cursor-pointer items-center gap-4 border-b border-stroke px-6 py-2 last:border-0 dark:border-strokedark md:w-auto md:border-0 xl:px-13.5 xl:py-5 ${currentTab === "latest"
-                ? "active before:absolute before:bottom-0 before:left-0 before:h-1 before:w-full before:rounded-tl-[4px] before:rounded-tr-[4px] before:bg-primary"
-                : ""
-                }`}
+              className={`relative flex w-full cursor-pointer items-center gap-4 border-b border-stroke px-6 py-2 last:border-0 dark:border-strokedark md:w-auto md:border-0 xl:px-13.5 xl:py-5 ${
+                currentTab === "latest"
+                  ? "active before:absolute before:bottom-0 before:left-0 before:h-1 before:w-full before:rounded-tl-[4px] before:rounded-tr-[4px] before:bg-primary"
+                  : ""
+              }`}
             >
               <div className="flex h-12.5 w-12.5 items-center justify-center rounded-[50%] border border-stroke dark:border-strokedark dark:bg-blacksection">
                 <p className="font-medium text-black text-metatitle3 dark:text-white">
@@ -88,10 +86,11 @@ const FeaturesTab = () => {
             </div>
             <div
               onClick={() => setCurrentTab("upcoming")}
-              className={`relative flex w-full cursor-pointer items-center gap-4 border-b border-stroke px-6 py-2 last:border-0 dark:border-strokedark md:w-auto md:border-0 xl:px-13.5 xl:py-5 ${currentTab === "upcoming"
-                ? "active before:absolute before:bottom-0 before:left-0 before:h-1 before:w-full before:rounded-tl-[4px] before:rounded-tr-[4px] before:bg-primary"
-                : ""
-                }`}
+              className={`relative flex w-full cursor-pointer items-center gap-4 border-b border-stroke px-6 py-2 last:border-0 dark:border-strokedark md:w-auto md:border-0 xl:px-13.5 xl:py-5 ${
+                currentTab === "upcoming"
+                  ? "active before:absolute before:bottom-0 before:left-0 before:h-1 before:w-full before:rounded-tl-[4px] before:rounded-tr-[4px] before:bg-primary"
+                  : ""
+              }`}
             >
               <div className="flex h-12.5 w-12.5 items-center justify-center rounded-[50%] border border-stroke dark:border-strokedark dark:bg-blacksection">
                 <p className="font-medium text-black text-metatitle3 dark:text-white">
@@ -104,9 +103,8 @@ const FeaturesTab = () => {
                 </button>
               </div>
             </div>
-
           </motion.div>
-          {/* <!-- Tab Menues End --> */}
+          {/* <!-- Tab Menus End --> */}
 
           {/* <!-- Tab Content Start --> */}
           <motion.div
@@ -115,7 +113,6 @@ const FeaturesTab = () => {
                 opacity: 0,
                 y: -20,
               },
-
               visible: {
                 opacity: 1,
                 y: 0,
@@ -133,25 +130,28 @@ const FeaturesTab = () => {
                 key={key}
               >
                 {/* Slider to display features for the current tab */}
-                <div className="swiper-container">
-                  {/* Custom Navigation Buttons */}
-                  <div className="custom-nav">
-                    <button ref={prevRef} className="custom-prev-button">Prev</button>
-                    <button ref={nextRef} className="custom-next-button">Next</button>
-                  </div>
+                <div className="swiper">
                   <Swiper
-                    modules={[Navigation, Pagination]}
                     spaceBetween={50}
                     slidesPerView={1}
-                    // navigation
-                    // pagination={{ clickable: true }}
-                    loop={true}
-                    navigation={{
-                      prevEl: prevRef.current,
-                      nextEl: nextRef.current,
+                    autoplay={{
+                      delay: 2500,
+                      disableOnInteraction: false,
                     }}
-                    onSwiper={(swiper) => (swiperRef.current = swiper)}
-                    className="my-swiper"
+                    pagination={{
+                      clickable: true,
+                    }}
+                    modules={[Autoplay, Pagination]}
+                    breakpoints={{
+                      // when window width is >= 640px
+                      0: {
+                        slidesPerView: 1,
+                      },
+                      // when window width is >= 768px
+                      768: {
+                        slidesPerView: 1,
+                      },
+                    }}
                   >
                     {/* Map through featureTab's features and render them as slides */}
                     {feature.features.map((featureTab, idx) => (
