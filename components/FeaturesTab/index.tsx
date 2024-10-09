@@ -13,19 +13,7 @@ import { motion } from "framer-motion";
 const FeaturesTab = () => {
   const [currentTab, setCurrentTab] = useState("latest");
   // Create references for custom navigation buttons
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
-  const swiperRef = useRef(null); // Define swiperRef for managing Swiper instance
-
-  useEffect(() => {
-    if (swiperRef.current && swiperRef.current.params) {
-      // Assign the custom buttons after the Swiper instance is ready
-      swiperRef.current.params.navigation.prevEl = prevRef.current;
-      swiperRef.current.params.navigation.nextEl = nextRef.current;
-      swiperRef.current.navigation.init();
-      swiperRef.current.navigation.update();
-    }
-  }, [swiperRef]);
+  
 
   return (
     <>
