@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 import { useState } from "react";
 
@@ -33,6 +34,9 @@ const Hero = () => {
                 <div className="flex flex-wrap gap-5">
                   <button
                     aria-label="get started button"
+                    onClick={() => {
+                      document.querySelector('#events')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
                     className="flex rounded-full bg-black px-7.5 py-2.5 text-white duration-300 ease-in-out hover:bg-blackho dark:bg-btndark dark:hover:bg-blackho"
                   >
                     Learn Now!
