@@ -56,13 +56,8 @@ const FunFact = () => {
             className="animate_top mx-auto mb-12.5 px-4 text-center md:w-4/5 md:px-0 lg:mb-17.5 lg:w-2/3 xl:w-1/2"
           >
             <h2 className="mb-4 text-3xl font-bold text-black dark:text-white xl:text-sectiontitle3">
-              Trusted Partnerships <br /> by Global Companies.
+              Trusted Partnerships <br /> by Global Communities.
             </h2>
-            <p className="mx-auto lg:w-11/12">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. In
-              convallis tortor eros. Donec vitae tortor lacus. Phasellus aliquam
-              ante in maximus.
-            </p>
           </motion.div>
 
           <div className="flex flex-wrap justify-center gap-8 lg:gap-42.5">
@@ -87,7 +82,7 @@ const FunFact = () => {
               <h3 className="mb-2.5 text-3xl font-bold text-black dark:text-white xl:text-sectiontitle3">
                 5
               </h3>
-              <p className="text-lg lg:text-para2">Companies</p>
+              <p className="text-lg lg:text-para2">Communities</p>
             </motion.div>
             
           </div>

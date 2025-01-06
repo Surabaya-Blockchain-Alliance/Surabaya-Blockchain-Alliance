@@ -3,7 +3,7 @@ import { FeatureTab } from "@/types/featureTab";
 import Link from "next/link";
 
 const FeaturesTabItem = ({ featureTab }: { featureTab: FeatureTab }) => {
-  const { title, desc1, desc2, videoUrl } = featureTab;
+  const { id, title, desc1, desc2, videoUrl } = featureTab;
 
   // Convert standard YouTube URL to embed URL
   const getEmbedUrl = (url: string) => {
@@ -21,7 +21,7 @@ const FeaturesTabItem = ({ featureTab }: { featureTab: FeatureTab }) => {
         </h2>
         <p className="pb-5">{desc1}</p>
         <div className="flex items-center w-full">
-          <Link href={''}>
+          <Link href={`event/${id}`}>
             <button
               aria-label="get started button"
               className="flex rounded-full bg-black px-7.5 py-2.5 text-white duration-300 ease-in-out hover:bg-blackho dark:bg-btndark dark:hover:bg-blackho"

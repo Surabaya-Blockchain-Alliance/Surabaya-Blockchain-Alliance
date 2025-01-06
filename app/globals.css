@@ -154,3 +154,7 @@ pre {
   background-color: black;
   color: white;
 }
+
+html {
+  scroll-behavior: smooth;
+}
