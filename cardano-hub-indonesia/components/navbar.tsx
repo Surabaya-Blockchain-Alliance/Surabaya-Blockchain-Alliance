@@ -1,8 +1,10 @@
 import React from "react";
 import ButtonBase from "./button/base";
+import "@meshsdk/react/styles.css";
+import { MeshProvider } from "@meshsdk/react";
+import ConnectWallet from "./button/ConnectWallet"; 
 import Link from "next/link";
 
-// Updated MenuItem interface with description for each item.
 interface MenuItem {
   label: string;
   href?: string;
@@ -103,7 +105,7 @@ const Navbar: React.FC = () => {
 
       {/* Navbar End */}
       <div className="navbar-end">
-        <ButtonBase label="Let's Connect" cn="btn rounded-full font-semibold bg-black text-white" />
+        <ConnectWallet /> 
       </div>
     </div>
   );
