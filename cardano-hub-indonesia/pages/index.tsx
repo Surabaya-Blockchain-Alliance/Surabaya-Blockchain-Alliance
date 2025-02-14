@@ -1,7 +1,18 @@
 import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/navbar";
+import About from "@/components/about";
+import { FaCircle } from "react-icons/fa";
+import { BsArrowRight } from "react-icons/bs";
+import Link from "next/link";
+import { useEffect } from "react";
+import { useState } from "react";
 import Hero from "@/components/hero";
+import Quests from "@/components/quests";
+import InfinityBackground from "@/components/animated/infinity";
+import Partnerships from "@/components/partnerships";
+import JoinCommunity from "@/components/join-community";
+import Footer from "@/components/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,11 +25,49 @@ const geistMono = Geist_Mono({
 });
 
 export default function Home() {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   return (
     <div
-      className={`${geistSans.variable} ${geistMono.variable} bg-gray-100 items-center justify-items-center min-h-screen font-[family-name:var(--font-geist-sans)]`}
+      className={`bg-gray-100 min-h-screen`}
     >
+      {/* Sticky Navbar */}
+      <div
+        className={`sticky top-0 z-50 transition-all ${isScrolled ? "bg-transparent" : "bg-transparent"
+          }`}
+      >
+        <div className={`${geistSans.variable} ${geistMono.variable} px-40 ${isScrolled ? 'py-4' : 'py-1'}`}>
+          <Navbar />
+        </div>
+      </div>
+
+      {/* Hero Section */}
       <Hero />
+      {/* About Section */}
+      <About />
+      {/* Quests Section */}
+      <Quests />
+      {/* Partnerships Section */}
+      <Partnerships />  
+      {/* JoinCommunity Section */}
+      <JoinCommunity />  
+      {/* Footer Section */}
+      <Footer />
     </div>
   );
 }

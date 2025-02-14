@@ -18,7 +18,7 @@ const menuItems: MenuItem[] = [
       { label: "Read Docs", href: "#", description: "Find documentation on how to get started" },
     ],
   },
-  { label: "Quests", href: "#"},
+  { label: "Quests", href: "#" },
   { label: "Events", href: "#" },
   { label: "Partnerships", href: "#" },
 ];
@@ -32,22 +32,22 @@ const Navbar: React.FC = () => {
             <summary className="font-semibold">{item.label}</summary>
             <ul className="p-2 bg-white flex items-center justify-between gap-3 z-50">
               <div className="cursor-pointer hover:border-gray-200 border-2 border-transparent rounded-2xl transition-all shadow-xl overflow-hidden">
-                <div className="card image-full h-40 rounded-2xl">
+                <Link href="/community" className="card image-full h-48 rounded-2xl">
                   <img
                     src="https://t3.ftcdn.net/jpg/07/00/34/62/360_F_700346277_CecN7LvdCIRGdxjwahHa00gqRqAO6CcG.jpg"
                     alt="Shoes"
                     className="w-full h-full object-cover rounded-2xl"
                   />
-                  <Link
-                    className="p-4 w-32 text-left hover:underline z-50"
-                    href="/community"
+                  <div
+                    className="p-4 w-32 text-left z-50"
+
                   >
                     <span className="font-semibold text-lg text-white">Community</span>
                     <p className="font-normal text-xs text-gray-200 break-words whitespace-normal">
                       Join Our Community!
                     </p>
-                  </Link>
-                </div>
+                  </div>
+                </Link>
               </div>
               <div className="space-y-2">
                 {renderMenu(item.subMenu)}
@@ -62,7 +62,7 @@ const Navbar: React.FC = () => {
             )}
           </a>
         )}
-      </li>
+      </li >
     ));
   };
 
