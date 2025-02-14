@@ -1,15 +1,10 @@
-import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/navbar";
 import About from "@/components/about";
-import { FaCircle } from "react-icons/fa";
-import { BsArrowRight } from "react-icons/bs";
-import Link from "next/link";
 import { useEffect } from "react";
 import { useState } from "react";
 import Hero from "@/components/hero";
 import Quests from "@/components/quests";
-import InfinityBackground from "@/components/animated/infinity";
 import Partnerships from "@/components/partnerships";
 import JoinCommunity from "@/components/join-community";
 import Footer from "@/components/footer";

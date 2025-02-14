@@ -1,6 +1,8 @@
 import React from "react";
 import { FaDiscord, FaTelegram } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import LogoIcon from "./LogoIcon";
+import SocialIcon from "./SocialIcon";
 
 const Footer: React.FC = () => {
     const currentYear = new Date().getFullYear();
@@ -55,21 +57,6 @@ const Footer: React.FC = () => {
             </footer>
         </>
     );
-};
-
-// SVG Icons
-const LogoIcon: React.FC<{ size?: number }> = ({ size = 50 }) => (
-    <img src="https://ugc.production.linktr.ee/FzVBkJvRFWQqZrverjmA_H2b85zgTrB8ByBMp?io=true&size=avatar-v3_0" className="rounded-full" style={{ width: `${size}px`, height: `${size}px` }} alt="" />
-);
-
-const SocialIcon: React.FC<{ type: "twitter" | "discord" | "telegram" }> = ({ type }) => {
-    const icons = {
-        twitter: (<FaXTwitter/>),
-        discord: (<FaDiscord/>),
-        telegram: (<FaTelegram/>),
-    };
-
-    return <a>{icons[type]}</a>;
 };
 
 export default Footer;
