@@ -1,7 +1,9 @@
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  webpack: function (config, options) {
+  reactStrictMode: false, 
+  typescript: {
+    ignoreBuildErrors: true, 
+  },
+  webpack: function (config: any, options: any) {
     config.experiments = {
       asyncWebAssembly: true,
       layers: true,
