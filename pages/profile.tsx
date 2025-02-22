@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { FaTwitter, FaDiscord, FaTelegram, FaWallet } from "react-icons/fa";
 import LogoIcon from "@/components/LogoIcon";
 import SocialIcon from "@/components/SocialIcon";
 import Link from "next/link";
 import EventCard from "@/components/card/events"; 
-import QuestCard from "@/components/card/quests";  
 
 export default function ProfilePage() {
     const [userData, setUserData] = useState({

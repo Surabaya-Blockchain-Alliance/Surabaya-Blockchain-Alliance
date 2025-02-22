@@ -140,7 +140,6 @@ const ConnectWallet = () => {
           </div>
         </div>
       )}
-      {error && <p className="text-red-500 mt-2"><b>Error: </b>{error.message}</p>}
     </div>
   );
 };

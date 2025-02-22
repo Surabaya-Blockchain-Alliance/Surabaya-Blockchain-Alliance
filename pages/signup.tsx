@@ -1,21 +1,45 @@
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router"; 
+import { auth, provider } from '../config'; 
+import { signInWithPopup } from 'firebase/auth';
 import ButtonBase from "@/components/button/base";
 import LogoIcon from "@/components/LogoIcon";
 import SocialIcon from "@/components/SocialIcon";
 import Link from "next/link";
-import { useEffect } from "react";
 import { FaGoogle, FaTwitter, FaWallet } from "react-icons/fa";
 
 export default function SignUp() {
     const currentYear = new Date().getFullYear();
+    const [loading, setLoading] = useState(false);  
+    const router = useRouter();  
+
+    const handleGoogleSignUp = async (): Promise<void> => {
+        try {
+          setLoading(true);
+          const result = await signInWithPopup(auth, provider);  
+          const user = result.user;
+          if (!user) {
+            throw new Error('Failed to get user data');
+          }
+          console.log("Signed up user:", user);
+          localStorage.setItem('user', JSON.stringify(user));
+          router.push('/createaccount'); 
+        } catch (error) {
+          console.error('Error during Google sign-in:', error);
+          alert('Authentication failed. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+    };
 
     useEffect(() => {
         const styleSheet = document.createElement("style");
         styleSheet.type = "text/css";
         styleSheet.innerText = `
-      @keyframes bg-scrolling-reverse {
-        100% { background-position: -50px -50px; }
-      }
-    `;
+            @keyframes bg-scrolling-reverse {
+                100% { background-position: -50px -50px; }
+            }
+        `;
         document.head.appendChild(styleSheet);
         return () => {
             document.head.removeChild(styleSheet);
@@ -51,8 +75,12 @@ export default function SignUp() {
                             <p className="text-sm font-medium">Create an Account</p>
                         </div>
                         <div className="py-1">
-                            <button className="btn w-full bg-white shadow-xl space-x-2 text-black hover:text-white hover:bg-black">
-                                <FaGoogle /> Sign up with Google
+                            <button 
+                                className="btn w-full bg-white shadow-xl space-x-2 text-black hover:text-white hover:bg-black"
+                                onClick={handleGoogleSignUp} 
+                                disabled={loading}  
+                            >
+                                <FaGoogle /> {loading ? 'Signing Up...' : 'Sign up with Google'}
                             </button>
                         </div>
                         <div className="py-1">
