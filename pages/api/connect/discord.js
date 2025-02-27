@@ -3,7 +3,7 @@ import { withIronSession } from 'next-iron-session';
 const discordOAuth = {
   clientId: process.env.DISCORD_CLIENT_ID,
   clientSecret: process.env.DISCORD_CLIENT_SECRET,
-  redirectUri: `http://localhost:3000/api/connect/discord/callback`, // Use env variable
+  redirectUri: `https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/discord/callback`, // Use env variable
 };
 
 const discordHandler = async (req, res) => {
