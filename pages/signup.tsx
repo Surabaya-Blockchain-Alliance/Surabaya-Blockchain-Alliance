@@ -23,7 +23,7 @@ export default function SignUp() {
           }
           console.log("Signed up user:", user);
           localStorage.setItem('user', JSON.stringify(user));
-          router.push('/createaccount'); 
+          router.push('/setup'); 
         } catch (error) {
           console.error('Error during Google sign-in:', error);
           alert('Authentication failed. Please try again.');

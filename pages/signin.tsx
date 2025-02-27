@@ -27,12 +27,8 @@ export default function SignIn(): JSX.Element {
       if (!user) {
         throw new Error('Failed to sign in with Google');
       }
-
-      // Optionally, you can store user data in localStorage for persistent session
       localStorage.setItem('user', JSON.stringify(user));
-
-      // Redirect to profile page after successful authentication
-      router.push('/profile'); 
+      router.push('/setup'); 
     } catch (error) {
       console.error('Error during Google sign-in:', error);
       alert('Authentication failed. Please try again.');

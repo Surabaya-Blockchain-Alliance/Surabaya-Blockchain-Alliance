@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { connect } from '../auth';
 import ConnectWallet from '../components/button/ConnectWallet';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
@@ -11,54 +10,51 @@ export default function ProfileSetup() {
   const [discordUsername, setDiscordUsername] = useState(null);
   const [twitterConnected, setTwitterConnected] = useState(false);
   const [twitterUsername, setTwitterUsername] = useState(null);
+  const [walletAddress, setWalletAddress] = useState(null);
   const router = useRouter();
-  const currentUser = connect.twitterAuthUrl;
-
-  useEffect(() => {
-    if (!currentUser) {
-      router.push('/signin');
-    }
-  }, [currentUser, router]);
 
   useEffect(() => {
     const checkConnections = async () => {
       try {
-        const twitterResponse = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/get/twitter-status', {
+        const twitterResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/twitter-status', {
           method: 'GET',
           credentials: 'include',
         });
         if (twitterResponse.ok) {
           const twitterData = await twitterResponse.json();
           setTwitterConnected(twitterData.connected);
-          setTwitterUsername(twitterData.username);
+          if (twitterData.username) {
+            setTwitterUsername(twitterData.username);
+            setUsername(twitterData.username);
+          }
         }
-        const discordResponse = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/get/discord-username', {
+
+        const discordResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/discord-username', {
           method: 'GET',
           credentials: 'include',
         });
         if (discordResponse.ok) {
           const discordData = await discordResponse.json();
           setDiscordUsername(discordData.username);
+          if (discordData.username && !twitterUsername) {
+            setUsername(discordData.username);
+          }
         }
       } catch (error) {
         console.error('Error checking connections:', error);
       }
     };
 
-    if (currentUser) {
-      checkConnections();
-    }
-  }, [currentUser]);
+    checkConnections();
+  }, []);
 
   const handleConnectTwitter = async () => {
     try {
       setLoading(true);
-      const response = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/connect/twitter', {
+      const response = await fetch('/api/connect/twitter', {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -69,8 +65,6 @@ export default function ProfileSetup() {
       const data = await response.json();
       if (data.authUrl) {
         window.location.href = data.authUrl;
-      } else {
-        throw new Error('No authentication URL received');
       }
     } catch (error) {
       console.error('Twitter connection error:', error);
@@ -80,33 +74,12 @@ export default function ProfileSetup() {
   };
 
   const handleConnectDiscord = async () => {
-    window.location.href = 'https://bakcend-surabaya-blockchain-aliance.vercel.app/connect/discord';
+    window.location.href = 'https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/discord';
   };
 
-  const handleConnectTelegram = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/connect/telegram', {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to start Telegram connection');
-      }
-  
-      const data = await response.json();
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      } else {
-        throw new Error('No authentication URL received');
-      }
-    } catch (error) {
-      console.error('Error connecting to Telegram:', error);
-      alert('Failed to connect with Telegram: ' + error.message);
-      setLoading(false);
-    }
+  const handleWalletConnect = (address) => {
+    setWalletAddress(address);
+    console.log('Wallet address received in ProfileSetup:', address); // Debug
   };
 
   const handleProfileSave = async () => {
@@ -115,20 +88,22 @@ export default function ProfileSetup() {
       const profileData = {
         username,
         twitterUsername: twitterConnected ? twitterUsername : null,
-        discordUsername: discordUsername || null
+        discordUsername: discordUsername || null,
+        walletAddress: walletAddress || null,
       };
-      
-      const response = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/save-profile', {
+
+      console.log('Profile data being sent:', profileData); // Debug
+
+      const response = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/save-profile', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(profileData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
       });
 
       if (!response.ok) {
-        throw new Error('Profile save failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Profile save failed');
       }
 
       console.log('Profile saved successfully:', profileData);
@@ -143,34 +118,10 @@ export default function ProfileSetup() {
 
   const currentYear = new Date().getFullYear();
 
-  useEffect(() => {
-    const styleSheet = document.createElement('style');
-    styleSheet.type = 'text/css';
-    styleSheet.innerText = `
-      @keyframes bg-scrolling-reverse {
-        100% { background-position: 50px 50px; }
-      }
-    `;
-    document.head.appendChild(styleSheet);
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, []);
-
-  const bgImage: string = 
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
-
   return (
     <div className="min-h-screen">
       <div className="w-full h-screen text-gray-800">
-        <div
-          className="grid grid-cols-2 justify-between items-start gap-10"
-          style={{
-            fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            background: `url(${bgImage}) repeat 0 0`,
-            animation: 'bg-scrolling-reverse 0.92s linear infinite',
-          }}
-        >
+        <div className="grid grid-cols-2 justify-between items-start gap-10">
           <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10">
             <div className="flex justify-between items-center">
               <LogoIcon />
@@ -185,36 +136,36 @@ export default function ProfileSetup() {
                 type="text"
                 id="username"
                 className="w-full p-2 border border-gray-300 rounded-md bg-white text-black"
-                value={username || discordUsername || twitterUsername || ''}
+                value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter a username"
               />
             </div>
             <div className="space-y-4 mt-4">
-              <button 
-                className="w-full flex items-center justify-between p-2 border border-gray-300 rounded-md" 
-                onClick={handleConnectTwitter} 
+              <button
+                className="w-full flex items-center justify-between p-2 border border-gray-300 rounded-md"
+                onClick={handleConnectTwitter}
                 disabled={loading || twitterConnected}
               >
                 <span>{twitterUsername ? `Connected to @${twitterUsername}` : 'Connect Twitter'}</span>
                 <SocialIcon type="twitter" size={24} />
               </button>
 
-              <button 
-                className="w-full flex items-center justify-between p-2 border border-gray-300 rounded-md" 
-                onClick={handleConnectDiscord} 
+              <button
+                className="w-full flex items-center justify-between p-2 border border-gray-300 rounded-md"
+                onClick={handleConnectDiscord}
                 disabled={loading}
               >
                 <span>{discordUsername ? `Connected to ${discordUsername}` : 'Connect Discord'}</span>
                 <SocialIcon type="discord" size={24} />
               </button>
 
-              <ConnectWallet />
+              <ConnectWallet onConnect={handleWalletConnect} />
             </div>
             <div className="py-3">
-              <button 
-                className="btn w-full bg-black shadow-xl text-white hover:bg-gray-800" 
-                onClick={handleProfileSave} 
+              <button
+                className="btn w-full bg-black shadow-xl text-white hover:bg-gray-800"
+                onClick={handleProfileSave}
                 disabled={loading}
               >
                 {loading ? 'Saving...' : 'Save Profile'}
