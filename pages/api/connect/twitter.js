@@ -19,7 +19,7 @@ const handler = async (req, res) => {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const callbackUrl = `https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/twitter/callback`; // Use env var for flexibility
+  const callbackUrl = `http://localhost:3000/api/connect/twitter/callback`; // Use env var for flexibility
   const requestData = {
     url: 'https://api.twitter.com/oauth/request_token',
     method: 'POST',

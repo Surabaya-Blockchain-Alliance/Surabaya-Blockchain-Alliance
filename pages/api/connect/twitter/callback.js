@@ -22,13 +22,15 @@ const handler = async (req, res) => {
     return res.status(400).json({ error: 'Missing oauth_token or oauth_verifier in callback' });
   }
 
+  // Check session
   const oauthSession = req.session.get('oauth');
-  console.log('Session in callback:', oauthSession); 
+  console.log('Session in callback:', oauthSession); // Debug session
 
   if (!oauthSession || !oauthSession.tokenSecret) {
     return res.status(400).json({ error: 'Session expired or invalid. Please restart the authentication process.' });
   }
 
+  // Verify token match
   if (oauthSession.token !== oauth_token) {
     return res.status(400).json({ error: 'OAuth token mismatch between session and callback' });
   }
@@ -69,12 +71,12 @@ const handler = async (req, res) => {
       username: screenName,
       userId,
     });
-    req.session.unset('oauth'); 
+    req.session.unset('oauth'); // Clear OAuth temp data
     await req.session.save();
 
-    console.log('Twitter session saved:', req.session.get('twitter'));
+    console.log('Twitter session saved:', req.session.get('twitter')); // Debug
 
-    return res.redirect('/setup');
+    return res.redirect('/setup'); // Redirect to your desired page
   } catch (error) {
     console.error('Error in Twitter callback:', error.message);
     return res.status(500).json({ error: 'Failed to complete Twitter authentication', details: error.message });
