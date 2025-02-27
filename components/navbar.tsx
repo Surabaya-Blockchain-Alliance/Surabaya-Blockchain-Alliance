@@ -4,6 +4,8 @@ import "@meshsdk/react/styles.css";
 import { MeshProvider } from "@meshsdk/react";
 import Link from "next/link";
 import { useRouter } from "next/router"; // Import useRouter
+import LogoIcon from "./LogoIcon";
+import { BsArrowRight } from "react-icons/bs";
 
 interface MenuItem {
   label: string;
@@ -26,7 +28,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const Navbar: React.FC = () => {
-  const router = useRouter(); 
+  const router = useRouter();
 
   const renderMenu = (items: MenuItem[], isSubMenu: boolean = false) => {
     return items.map((item, index) => (
@@ -70,7 +72,7 @@ const Navbar: React.FC = () => {
   };
 
   const handleLogin = () => {
-    router.push("/signin"); 
+    router.push("/signin");
   };
 
   return (
@@ -83,7 +85,7 @@ const Navbar: React.FC = () => {
             className="btn btn-ghost hover:bg-none rounded-full"
           >
             <img
-              src="http://www.w3.org/2000/svg"
+              src="/img/logo.png"
               alt="Menu Icon"
               className="w-6 h-6"
             />
@@ -96,25 +98,27 @@ const Navbar: React.FC = () => {
           </ul>
         </div>
         {/* Brand Name */}
-        <a className="btn btn-ghost text-black rounded-full hover:bg-transparent text-xl">
-          Cardano Hub Indonesia
+        <a className="btn btn-ghost text-black hover:bg-transparent text-xl">
+          <img src="/img/logo.png" alt="" className="h-full" />
         </a>
-      </div>
-
-      {/* Navbar Center */}
-      <div className="navbar-center hidden lg:flex text-black">
-        <ul className="menu menu-horizontal px-1">
-          {renderMenu(menuItems)}
-        </ul>
+        <div className="hidden navbar-center lg:flex text-black w-full">
+          <ul className="menu menu-horizontal px-1">
+            {renderMenu(menuItems)}
+          </ul>
+        </div>
       </div>
 
       {/* Navbar End */}
       <div className="navbar-end">
         <button
           onClick={handleLogin}
-          className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
+          className="bg-black text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
         >
-          Start Your Journey
+          <div className="flex justify-between items-center gap-3">
+            Start Your Journey
+            <BsArrowRight className="text-xs" />
+          </div>
+
         </button>
       </div>
     </div>

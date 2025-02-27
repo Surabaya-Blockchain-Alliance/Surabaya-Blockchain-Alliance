@@ -11,48 +11,61 @@ const Footer: React.FC = () => {
         <>
             <footer className="footer bg-white text-black p-10">
                 <aside>
-                    <LogoIcon />
+                    <img src="/img/logo.png" alt="" className="h-full" width={100} />
                     <p>
-                        ACME Industries Ltd.
+                        <span className="font-semibold">CV. Cardano Hub Indonesia</span>
                         <br />
-                        Providing reliable tech since 1992
+                        Indonesia
                     </p>
                 </aside>
                 <nav>
-                    <h6 className="footer-title">Services</h6>
-                    {["Branding", "Design", "Marketing", "Advertisement"].map((service) => (
-                        <a key={service} className="link link-hover">
-                            {service}
+                    <h6 className="footer-title">Community</h6>
+                    {[
+                        { name: "About Us", href: "/about" },
+                        { name: "Read Docs", href: process.env.URL_READ_DOCS }
+                    ].map((service) => (
+                        <a key={service.name} href={service.href} className="link link-hover">
+                            {service.name}
                         </a>
                     ))}
                 </nav>
                 <nav>
-                    <h6 className="footer-title">Company</h6>
-                    {["About us", "Contact", "Jobs", "Press kit"].map((item) => (
-                        <a key={item} className="link link-hover">
-                            {item}
+                    <h6 className="footer-title">Extras</h6>
+                    {[
+                        { name: "Quests", href: "/quests" },
+                        { name: "Events", href: "/events" },
+                        { name: "Partnerships", href: "/partnerships" }
+                    ].map((item) => (
+                        <a key={item.name} href={item.href} className="link link-hover">
+                            {item.name}
                         </a>
                     ))}
                 </nav>
                 <nav>
                     <h6 className="footer-title">Legal</h6>
-                    {["Terms of use", "Privacy policy", "Cookie policy"].map((policy) => (
-                        <a key={policy} className="link link-hover">
-                            {policy}
+                    {[
+                        { name: "Twitter", href: process.env.URL_TWITTER },
+                        { name: "Telegram", href: process.env.URL_TELEGRAM },
+                        { name: "Discord", href: process.env.URL_DISCORD }
+                    ].map((policy) => (
+                        <a key={policy.name} href={policy.href} className="link link-hover" target="_blank" rel="noopener noreferrer">
+                            {policy.name}
                         </a>
                     ))}
                 </nav>
+
             </footer>
             <div className=""></div>
             <footer className="footer bg-white text-black items-center p-4">
                 <aside className="grid-flow-col items-center">
-                    <LogoIcon size={36} />
-                    <p>Copyright © {currentYear} - All rights reserved</p>
+                    <img src="/img/logo.png" alt="" className="h-full" width={100} />
+
                 </aside>
                 <nav className="grid-flow-col gap-4 md:place-self-center md:justify-self-end">
-                    <SocialIcon type="twitter" />
+                    {/* <SocialIcon type="twitter" />
                     <SocialIcon type="discord" />
-                    <SocialIcon type="telegram" />
+                    <SocialIcon type="telegram" /> */}
+                    <p>Copyright © {currentYear} - All rights reserved</p>
                 </nav>
             </footer>
         </>

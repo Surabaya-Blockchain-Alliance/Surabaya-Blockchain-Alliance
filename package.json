@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.13.0",
     "@meshsdk/core": "^1.9.0-beta.3",
     "@meshsdk/react": "^1.9.0-beta.3",
     "aos": "^2.3.4",
@@ -17,6 +18,7 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
     "firebase": "^11.3.1",
+    "lottie-web": "^5.12.2",
     "next": "15.1.6",
     "next-auth": "^4.24.11",
     "next-iron-session": "^4.2.0",

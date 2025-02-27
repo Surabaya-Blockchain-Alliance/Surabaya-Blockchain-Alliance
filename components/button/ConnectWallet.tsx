@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@meshsdk/react';
 import { BrowserWallet } from '@meshsdk/core';
+import { FaWallet } from 'react-icons/fa6';
 
 const ConnectWallet = ({ onConnect }) => {
   const { wallet, connected, disconnect } = useWallet();
@@ -92,7 +93,8 @@ const ConnectWallet = ({ onConnect }) => {
   return (
     <div>
       <button
-        className="w-full flex items-center justify-between p-2 border border-gray-300 rounded-md"
+        className="btn w-full bg-white border-white shadow-xl text-black space-x-2 flex justify-between hover:text-white hover:bg-black hover:border-black"
+
         onClick={handleButtonClick}
       >
         <span>
@@ -100,7 +102,7 @@ const ConnectWallet = ({ onConnect }) => {
             ? `Connected: ${shortenAddress(selectedWallet.address)}`
             : 'Connect Wallet'}
         </span>
-        {/* Optional: Add a wallet icon */}
+        <FaWallet />
       </button>
 
       {showWalletModal && !isConnected && (
@@ -126,7 +128,7 @@ const ConnectWallet = ({ onConnect }) => {
               )}
             </div>
             <button
-              className="btn btn-secondary text-white rounded-full px-6 py-2 w-full mt-4"
+              className="btn w-full bg-[#5865F2] border-[#5865F2] shadow-xl text-white space-x-2 flex justify-between hover:text-[#5865F2] hover:bg-white hover:border-[#5865F2]"
               onClick={() => setShowWalletModal(false)}
             >
               Close
