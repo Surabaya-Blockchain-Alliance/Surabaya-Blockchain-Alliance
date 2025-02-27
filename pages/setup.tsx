@@ -74,7 +74,7 @@ export default function ProfileSetup() {
       }
     } catch (error) {
       console.error('Twitter connection error:', error);
-      alert(Failed to connect with Twitter: ${error.message});
+      alert(`Failed to connect with Twitter: ${error.message}`);
       setLoading(false);
     }
   };
@@ -146,11 +146,11 @@ export default function ProfileSetup() {
   useEffect(() => {
     const styleSheet = document.createElement('style');
     styleSheet.type = 'text/css';
-    styleSheet.innerText = 
+    styleSheet.innerText = `
       @keyframes bg-scrolling-reverse {
         100% { background-position: 50px 50px; }
       }
-    ;
+    `;
     document.head.appendChild(styleSheet);
     return () => {
       document.head.removeChild(styleSheet);
@@ -167,7 +167,7 @@ export default function ProfileSetup() {
           className="grid grid-cols-2 justify-between items-start gap-10"
           style={{
             fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            background: url(${bgImage}) repeat 0 0,
+            background: `url(${bgImage}) repeat 0 0`,
             animation: 'bg-scrolling-reverse 0.92s linear infinite',
           }}
         >
@@ -196,7 +196,7 @@ export default function ProfileSetup() {
                 onClick={handleConnectTwitter} 
                 disabled={loading || twitterConnected}
               >
-                <span>{twitterUsername ? Connected to @${twitterUsername} : 'Connect Twitter'}</span>
+                <span>{twitterUsername ? `Connected to @${twitterUsername}` : 'Connect Twitter'}</span>
                 <SocialIcon type="twitter" size={24} />
               </button>
 
@@ -205,7 +205,7 @@ export default function ProfileSetup() {
                 onClick={handleConnectDiscord} 
                 disabled={loading}
               >
-                <span>{discordUsername ? Connected to ${discordUsername} : 'Connect Discord'}</span>
+                <span>{discordUsername ? `Connected to ${discordUsername}` : 'Connect Discord'}</span>
                 <SocialIcon type="discord" size={24} />
               </button>
 
