@@ -48,6 +48,20 @@ export default function ProfileSetup() {
     checkConnections();
   }, []);
 
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.type = 'text/css';
+    styleSheet.innerText = `
+      @keyframes bg-scrolling-reverse {
+        100% { background-position: 50px 50px; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
   const handleConnectTwitter = async () => {
     try {
       setLoading(true);
@@ -79,7 +93,7 @@ export default function ProfileSetup() {
 
   const handleWalletConnect = (address) => {
     setWalletAddress(address);
-    console.log('Wallet address received in ProfileSetup:', address); // Debug
+    console.log('Wallet address received in ProfileSetup:', address);
   };
 
   const handleProfileSave = async () => {
@@ -92,7 +106,7 @@ export default function ProfileSetup() {
         walletAddress: walletAddress || null,
       };
 
-      console.log('Profile data being sent:', profileData); // Debug
+      console.log('Profile data being sent:', profileData);
 
       const response = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/save-profile', {
         method: 'POST',
@@ -118,10 +132,20 @@ export default function ProfileSetup() {
 
   const currentYear = new Date().getFullYear();
 
+  const bgImage =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
+
   return (
     <div className="min-h-screen">
       <div className="w-full h-screen text-gray-800">
-        <div className="grid grid-cols-2 justify-between items-start gap-10">
+        <div
+          className="grid grid-cols-2 justify-between items-start gap-10"
+          style={{
+            fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
+            background: `url(${bgImage}) repeat 0 0`,
+            animation: 'bg-scrolling-reverse 0.92s linear infinite',
+          }}
+        >
           <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10">
             <div className="flex justify-between items-center">
               <LogoIcon />
