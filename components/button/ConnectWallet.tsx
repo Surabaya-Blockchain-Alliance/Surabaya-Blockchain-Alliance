@@ -1,73 +1,89 @@
-import { useState, useEffect } from "react";
-import { useAddress, useWallet } from "@meshsdk/react";
+import { useState, useEffect } from 'react';
+import { useWallet } from '@meshsdk/react';
 import { BrowserWallet } from '@meshsdk/core';
 
-const ConnectWallet = () => {
-  const { wallet, connected, disconnect, error } = useWallet();
-  const [selectedWallet, setSelectedWallet] = useState<any | null>(null);
+const ConnectWallet = ({ onConnect }) => {
+  const { wallet, connected, disconnect } = useWallet();
+  const [selectedWallet, setSelectedWallet] = useState(null);
   const [showWalletModal, setShowWalletModal] = useState(false);
-  const [wallets, setWallets] = useState<any[]>([]);
-  const [isConnected, setIsConnected] = useState<boolean>(connected); 
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false); 
+  const [wallets, setWallets] = useState([]);
+  const [isConnected, setIsConnected] = useState(connected);
 
   useEffect(() => {
     if (connected && wallet) {
-      setSelectedWallet(wallet);
-      logWalletAddress(wallet);
-      setIsConnected(true);  
+      const fetchAddress = async () => {
+        try {
+          const walletAddresses = await wallet.getUsedAddresses();
+          const address = walletAddresses && walletAddresses.length > 0 ? walletAddresses[0] : null;
+          if (address) {
+            setSelectedWallet({ ...wallet, address });
+            setIsConnected(true);
+            if (onConnect) {
+              onConnect(address); // Pass address to ProfileSetup
+            }
+            console.log('Wallet connected in useEffect:', address);
+          }
+        } catch (error) {
+          console.error('Error fetching wallet address:', error);
+        }
+      };
+      fetchAddress();
     }
-  }, [connected, wallet]);
+  }, [connected, wallet, onConnect]);
 
   const fetchWallets = async () => {
     try {
       const availableWallets = await BrowserWallet.getAvailableWallets();
-      console.log("Available Wallets:", availableWallets);
+      console.log('Available Wallets:', availableWallets);
       setWallets(availableWallets);
-      if (availableWallets.length === 0) return;
-      setShowWalletModal(true);
+      if (availableWallets.length > 0) {
+        setShowWalletModal(true);
+      } else {
+        alert('No wallets available. Please install a Cardano wallet extension.');
+      }
     } catch (error) {
-      console.error("Error fetching wallets:", error);
+      console.error('Error fetching wallets:', error);
     }
   };
 
-  const handleWalletSelect = async (walletId: string) => {
-    console.log(`Selecting wallet with ID: ${walletId}`);
-    setShowWalletModal(false); 
+  const handleWalletSelect = async (walletId) => {
+    setShowWalletModal(false);
     try {
       const enabledWallet = await BrowserWallet.enable(walletId);
-      const walletAddress = await enabledWallet.getUsedAddresses();
-      if (walletAddress && walletAddress.length > 0) {
-        setSelectedWallet({ ...enabledWallet, address: walletAddress[0] });
-        console.log(`Enabled wallet with ID: ${walletId}, Address: ${walletAddress[0]}`);
-        setIsConnected(true);  
+      const walletAddresses = await enabledWallet.getUsedAddresses();
+      const address = walletAddresses && walletAddresses.length > 0 ? walletAddresses[0] : null;
+      if (address) {
+        setSelectedWallet({ ...enabledWallet, address });
+        setIsConnected(true);
+        if (onConnect) {
+          onConnect(address); // Pass address to ProfileSetup
+        }
+        console.log(`Enabled wallet with ID: ${walletId}, Address: ${address}`);
       } else {
-        console.error("No addresses found for this wallet.");
+        console.error('No addresses found for this wallet.');
+        alert('No address found for the selected wallet.');
       }
     } catch (error) {
-      console.error("Error enabling wallet:", error);
-      alert("There was an issue connecting the wallet. Please try again.");
+      console.error('Error enabling wallet:', error);
+      alert('Failed to connect wallet. Please try again.');
     }
   };
 
   const handleDisconnect = () => {
     disconnect();
-    setSelectedWallet(null); 
-    setIsConnected(false); 
-    setShowProfileDropdown(false); 
+    setSelectedWallet(null);
+    setIsConnected(false);
+    console.log('Wallet disconnected');
   };
 
-  const logWalletAddress = (wallet: any) => {
-    console.log("Connected Wallet Address:", wallet.address);
-  };
-
-  const shortenAddress = (address: string) => {
-    return address.slice(0, 6) + "..." + address.slice(-4);
+  const shortenAddress = (address) => {
+    if (!address) return 'Connect Wallet';
+    return address.slice(0, 6) + '...' + address.slice(-4);
   };
 
   const handleButtonClick = () => {
     if (isConnected && selectedWallet) {
-      setShowProfileDropdown(!showProfileDropdown);
-      return;
+      handleDisconnect();
     } else {
       fetchWallets();
     }
@@ -75,39 +91,17 @@ const ConnectWallet = () => {
 
   return (
     <div>
-      {!isConnected && !selectedWallet ? (
-        <button
-          className="btn btn-primary text-white rounded-full px-6 py-2"
-          onClick={handleButtonClick}
-        >
-          {selectedWallet && selectedWallet.address ? shortenAddress(selectedWallet.address) : "Select Wallet"}
-        </button>
-      ) : (
-        <div className="flex items-center relative">
-          <button
-            className="btn btn-primary text-white rounded-full px-6 py-2"
-            onClick={handleButtonClick} 
-          >
-            {selectedWallet ? shortenAddress(selectedWallet.address) : 'Unknown Wallet'}
-          </button>
-
-          {showProfileDropdown && isConnected && selectedWallet && (
-            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg p-4 mt-2">
-              <h3 className="text-xl font-semibold mb-4">Connected Wallet Profile</h3>
-              <div className="bg-gray-100 p-4 rounded-lg shadow-lg">
-                <p className="text-gray-700"><b>Name:</b> {selectedWallet.name}</p>
-                <p className="text-gray-700"><b>Address:</b> {shortenAddress(selectedWallet.address)}</p>
-                <button
-                  className="btn btn-danger text-white rounded-full px-6 py-2 mt-4"
-                  onClick={handleDisconnect}
-                >
-                  Disconnect Wallet
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <button
+        className="w-full flex items-center justify-between p-2 border border-gray-300 rounded-md"
+        onClick={handleButtonClick}
+      >
+        <span>
+          {isConnected && selectedWallet && selectedWallet.address
+            ? `Connected: ${shortenAddress(selectedWallet.address)}`
+            : 'Connect Wallet'}
+        </span>
+        {/* Optional: Add a wallet icon */}
+      </button>
 
       {showWalletModal && !isConnected && (
         <div className="absolute top-0 left-0 w-full h-full bg-gray-500 bg-opacity-50 flex justify-center items-center">
@@ -133,7 +127,7 @@ const ConnectWallet = () => {
             </div>
             <button
               className="btn btn-secondary text-white rounded-full px-6 py-2 w-full mt-4"
-              onClick={() => setShowWalletModal(false)} 
+              onClick={() => setShowWalletModal(false)}
             >
               Close
             </button>
