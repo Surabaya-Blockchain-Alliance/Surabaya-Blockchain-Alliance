@@ -80,7 +80,7 @@ export default function ProfileSetup() {
   };
 
   const handleConnectDiscord = async () => {
-    window.location.href = 'http://localhost:5000/connect/discord';
+    window.location.href = 'https://bakcend-surabaya-blockchain-aliance.vercel.app/connect/discord';
   };
 
   const handleConnectTelegram = async () => {
