@@ -23,7 +23,7 @@ export default function ProfileSetup() {
   useEffect(() => {
     const checkConnections = async () => {
       try {
-        const twitterResponse = await fetch('http://localhost:5000/get/twitter-status', {
+        const twitterResponse = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/get/twitter-status', {
           method: 'GET',
           credentials: 'include',
         });
@@ -32,7 +32,7 @@ export default function ProfileSetup() {
           setTwitterConnected(twitterData.connected);
           setTwitterUsername(twitterData.username);
         }
-        const discordResponse = await fetch('http://localhost:5000/get/discord-username', {
+        const discordResponse = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/get/discord-username', {
           method: 'GET',
           credentials: 'include',
         });
@@ -53,7 +53,7 @@ export default function ProfileSetup() {
   const handleConnectTwitter = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/connect/twitter', {
+      const response = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/connect/twitter', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -86,7 +86,7 @@ export default function ProfileSetup() {
   const handleConnectTelegram = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/connect/telegram', {
+      const response = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/connect/telegram', {
         method: 'GET',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -118,7 +118,7 @@ export default function ProfileSetup() {
         discordUsername: discordUsername || null
       };
       
-      const response = await fetch('http://localhost:5000/save-profile', {
+      const response = await fetch('https://bakcend-surabaya-blockchain-aliance.vercel.app/save-profile', {
         method: 'POST',
         credentials: 'include',
         headers: {
