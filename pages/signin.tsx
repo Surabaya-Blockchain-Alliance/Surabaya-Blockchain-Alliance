@@ -32,7 +32,7 @@ export default function SignIn(): JSX.Element {
       localStorage.setItem('user', JSON.stringify(user));
 
       // Redirect to profile page after successful authentication
-      router.push('/profile'); 
+      router.push('/setup'); 
     } catch (error) {
       console.error('Error during Google sign-in:', error);
       alert('Authentication failed. Please try again.');
