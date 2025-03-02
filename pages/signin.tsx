@@ -22,7 +22,7 @@ export default function SignIn(): JSX.Element {
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       setLoading(true);
-      const result = await signInWithPopup(auth, provider);  // Firebase Google sign-in
+      const result = await signInWithPopup(auth, provider);  
 
       const user = result.user;
       if (!user) {
