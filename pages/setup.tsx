@@ -16,40 +16,41 @@ export default function ProfileSetup() {
   const [walletAddress, setWalletAddress] = useState(null);
   const router = useRouter();
 
-  // useEffect(() => {
-  //   const checkConnections = async () => {
-  //     try {
-  //       const twitterResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/twitter-status', {
-  //         method: 'GET',
-  //         credentials: 'include',
-  //       });
-  //       if (twitterResponse.ok) {
-  //         const twitterData = await twitterResponse.json();
-  //         setTwitterConnected(twitterData.connected);
-  //         if (twitterData.username) {
-  //           setTwitterUsername(twitterData.username);
-  //           setUsername(twitterData.username);
-  //         }
-  //       }
+  useEffect(() => {
+  const checkConnections = async () => {
+    try {
+      const twitterResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/twitter-status', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (twitterResponse.ok) {
+        const twitterData = await twitterResponse.json();
+        setTwitterConnected(twitterData.connected);
+        if (twitterData.username) {
+          setTwitterUsername(twitterData.username);
+          setUsername(twitterData.username);
+        }
+      }
 
-  //       const discordResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/discord-username', {
-  //         method: 'GET',
-  //         credentials: 'include',
-  //       });
-  //       if (discordResponse.ok) {
-  //         const discordData = await discordResponse.json();
-  //         setDiscordUsername(discordData.username);
-  //         if (discordData.username && !twitterUsername) {
-  //           setUsername(discordData.username);
-  //         }
-  //       }
-  //     } catch (error) {
-  //       console.error('Error checking connections:', error);
-  //     }
-  //   };
+      const discordResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/discord-username', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (discordResponse.ok) {
+        const discordData = await discordResponse.json();
+        setDiscordUsername(discordData.username);
+        if (discordData.username && !twitterUsername) {
+          setUsername(discordData.username);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking connections:', error);
+    }
+  };
 
-  //   checkConnections();
-  // }, []);
+  checkConnections();
+}, []);
+
 
   const handleConnectTwitter = async () => {
     try {
