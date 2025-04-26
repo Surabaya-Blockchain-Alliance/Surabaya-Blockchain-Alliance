@@ -1,18 +1,19 @@
 import { withIronSession } from 'next-iron-session';
 import axios from 'axios';
+const BASE_URL = process.env.BASE_URL;
+
 
 const discordOAuth = {
   clientId: process.env.DISCORD_CLIENT_ID,
   clientSecret: process.env.DISCORD_CLIENT_SECRET,
-  redirectUri: `https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/discord/callback`,
+  redirectUri: `${BASE_URL}/api/connect/discord/callback`,
 };
 
 const discordCallbackHandler = async (req, res) => {
-  const { code } = req.query;
-
-  if (!code) {
-    res.status(400).json({ error: 'Code parameter missing' });
-    return;
+  const { code, error } = req.query;
+  if (error || !code) {
+    console.warn('Discord login canceled or failed:', error || 'Missing code');
+    return res.redirect('/setup');
   }
 
   try {
@@ -57,7 +58,7 @@ export default withIronSession(discordCallbackHandler, {
   password: process.env.SESSION_SECRET,
   cookieName: 'discord_oauth',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV,
     maxAge: 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',

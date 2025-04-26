@@ -10,22 +10,31 @@ const ConnectWallet = ({ onConnect }) => {
   const [wallets, setWallets] = useState([]);
   const [isConnected, setIsConnected] = useState(connected);
 
+  const getWalletAddress = async (walletInstance) => {
+    try {
+      let address = null;
+      const usedAddresses = await walletInstance.getUsedAddresses();
+      if (usedAddresses.length > 0) {
+        address = usedAddresses[0];
+      } else {
+        address = await walletInstance.getChangeAddress();
+      }
+      return address;
+    } catch (error) {
+      console.error('Error getting wallet address:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (connected && wallet) {
       const fetchAddress = async () => {
-        try {
-          const walletAddresses = await wallet.getUsedAddresses();
-          const address = walletAddresses && walletAddresses.length > 0 ? walletAddresses[0] : null;
-          if (address) {
-            setSelectedWallet({ ...wallet, address });
-            setIsConnected(true);
-            if (onConnect) {
-              onConnect(address); // Pass address to ProfileSetup
-            }
-            console.log('Wallet connected in useEffect:', address);
-          }
-        } catch (error) {
-          console.error('Error fetching wallet address:', error);
+        const address = await getWalletAddress(wallet);
+        if (address) {
+          setSelectedWallet({ ...wallet, address });
+          setIsConnected(true);
+          onConnect?.(address);
+          console.log('Wallet connected (Mesh SDK):', address);
         }
       };
       fetchAddress();
@@ -35,12 +44,11 @@ const ConnectWallet = ({ onConnect }) => {
   const fetchWallets = async () => {
     try {
       const availableWallets = await BrowserWallet.getAvailableWallets();
-      console.log('Available Wallets:', availableWallets);
       setWallets(availableWallets);
-      if (availableWallets.length > 0) {
-        setShowWalletModal(true);
+      if (availableWallets.length === 0) {
+        alert('No Cardano wallets found. Please install Lace, Typhon, or Yoroi.');
       } else {
-        alert('No wallets available. Please install a Cardano wallet extension.');
+        setShowWalletModal(true);
       }
     } catch (error) {
       console.error('Error fetching wallets:', error);
@@ -50,23 +58,19 @@ const ConnectWallet = ({ onConnect }) => {
   const handleWalletSelect = async (walletId) => {
     setShowWalletModal(false);
     try {
-      const enabledWallet = await BrowserWallet.enable(walletId);
-      const walletAddresses = await enabledWallet.getUsedAddresses();
-      const address = walletAddresses && walletAddresses.length > 0 ? walletAddresses[0] : null;
+      const walletInstance = await BrowserWallet.enable(walletId);
+      const address = await getWalletAddress(walletInstance);
       if (address) {
-        setSelectedWallet({ ...enabledWallet, address });
+        setSelectedWallet({ ...walletInstance, address });
         setIsConnected(true);
-        if (onConnect) {
-          onConnect(address); // Pass address to ProfileSetup
-        }
-        console.log(`Enabled wallet with ID: ${walletId}, Address: ${address}`);
+        onConnect?.(address);
+        console.log(`Wallet connected: ${walletId}`, address);
       } else {
-        console.error('No addresses found for this wallet.');
-        alert('No address found for the selected wallet.');
+        alert('No address found. Try using a wallet with some activity.');
       }
     } catch (error) {
       console.error('Error enabling wallet:', error);
-      alert('Failed to connect wallet. Please try again.');
+      alert('Failed to connect wallet.');
     }
   };
 
@@ -77,11 +81,6 @@ const ConnectWallet = ({ onConnect }) => {
     console.log('Wallet disconnected');
   };
 
-  const shortenAddress = (address) => {
-    if (!address) return 'Connect Wallet';
-    return address.slice(0, 6) + '...' + address.slice(-4);
-  };
-
   const handleButtonClick = () => {
     if (isConnected && selectedWallet) {
       handleDisconnect();
@@ -90,48 +89,49 @@ const ConnectWallet = ({ onConnect }) => {
     }
   };
 
+  const shortenAddress = (address) => {
+    if (!address) return 'Connect Wallet';
+    return address.slice(0, 6) + '...' + address.slice(-4);
+  };
+
   return (
     <div>
       <button
         className="btn w-full bg-white border-white shadow-xl text-black space-x-2 flex justify-between hover:text-white hover:bg-black hover:border-black"
-
         onClick={handleButtonClick}
       >
         <span>
-          {isConnected && selectedWallet && selectedWallet.address
+          {isConnected && selectedWallet?.address
             ? `Connected: ${shortenAddress(selectedWallet.address)}`
             : 'Connect Wallet'}
         </span>
         <FaWallet />
       </button>
 
-      {showWalletModal && !isConnected && (
-        <div className="absolute top-0 left-0 w-full h-full bg-gray-500 bg-opacity-50 flex justify-center items-center">
+      {showWalletModal && (
+        <div className="absolute top-0 left-0 w-full h-full bg-gray-500 bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-xl w-80">
-            <h3 className="text-xl font-semibold mb-4">Available Wallets</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {wallets.length > 0 ? (
-                wallets.map((availableWallet, index) => (
-                  <div
-                    key={index}
-                    className="border rounded-lg p-4 shadow-lg hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleWalletSelect(availableWallet.id)}
-                  >
-                    <h4 className="text-lg font-semibold">{availableWallet.name}</h4>
-                    <button className="btn btn-primary text-white rounded-full px-6 py-2 w-full mt-2">
-                      Connect to {availableWallet.name}
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p>No wallets available</p>
-              )}
+            <h3 className="text-xl font-semibold mb-4">Choose Wallet</h3>
+            <div className="grid gap-4">
+            {wallets.map((wallet, idx) => (
+              <button
+                key={idx}
+                className={`btn w-full ${
+                selectedWallet?.name === wallet.name
+                  ? 'bg-black text-white border-black'
+                  : 'btn-outline'
+                 }`}
+                onClick={() => handleWalletSelect(wallet.id)}
+              >
+                {wallet.name}
+              </button>
+            ))}
             </div>
             <button
-              className="btn w-full bg-[#5865F2] border-[#5865F2] shadow-xl text-white space-x-2 flex justify-between hover:text-[#5865F2] hover:bg-white hover:border-[#5865F2]"
+              className="btn mt-4 w-full bg-gray-200 text-black"
               onClick={() => setShowWalletModal(false)}
             >
-              Close
+              Cancel
             </button>
           </div>
         </div>

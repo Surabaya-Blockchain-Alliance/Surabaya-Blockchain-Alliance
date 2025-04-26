@@ -1,25 +1,15 @@
-import { withIronSession } from 'next-iron-session';
+import { db } from '../../config'; 
+import { collection, getDocs } from 'firebase/firestore';
 
-const handler = async (req, res) => {
-  const profile = req.session.get('profile') || {
-    username: '',
-    twitterUsername: null,
-    discordUsername: null,
-    walletAddress: null,
-    telegram: null, // Placeholder for future use
-    pointsCollected: 0, // Placeholder for future use
-  };
-
-  return res.status(200).json(profile);
-};
-
-export default withIronSession(handler, {
-  password: process.env.SESSION_SECRET,
-  cookieName: 'user_profile',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 60 * 24 * 30 * 1000, // 30 days
-    httpOnly: true,
-    sameSite: 'lax',
-  },
-});
+export default async function handler(req, res) {
+  try {
+    const usersCollection = collection(db, 'users');
+    const snapshot = await getDocs(usersCollection);
+    const userList = snapshot.docs.map(doc => doc.data());
+    
+    res.status(200).json(userList);
+  } catch (error) {
+    console.error('Error fetching data from Firestore:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+}

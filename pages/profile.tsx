@@ -153,7 +153,6 @@ export default function ProfilePage() {
             </footer>
           </div>
 
-          {/* Right side - Event and Quest Cards */}
           <div className="h-screen w-full bg-white shadow-xl p-6">
             <div className="flex flex-col h-full space-y-6">
               <div className="flex-1">

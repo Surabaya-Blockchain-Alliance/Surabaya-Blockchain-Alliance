@@ -1,6 +1,7 @@
 import { JSX, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { auth, provider, signInWithPopup } from '../config';
+import { getFirestore, doc, getDoc } from 'firebase/firestore'; 
 import Link from 'next/link';
 import { FaGoogle, FaWallet } from 'react-icons/fa';
 import LogoIcon from '@/components/LogoIcon';
@@ -17,8 +18,8 @@ interface User {
 export default function SignIn(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+  const db = getFirestore();
 
-  // Google Sign-in handler
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       setLoading(true);
@@ -28,8 +29,15 @@ export default function SignIn(): JSX.Element {
       if (!user) {
         throw new Error('Failed to sign in with Google');
       }
-      localStorage.setItem('user', JSON.stringify(user));
-      router.push('/setup');
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (userDoc.exists()) {
+        router.push('/profile');
+      } else {
+        localStorage.setItem('user', JSON.stringify(user));
+        router.push('/setup');
+      }
     } catch (error) {
       console.error('Error during Google sign-in:', error);
       alert('Authentication failed. Please try again.');
@@ -43,11 +51,7 @@ export default function SignIn(): JSX.Element {
   useEffect(() => {
     const styleSheet = document.createElement('style');
     styleSheet.type = 'text/css';
-    styleSheet.innerText = `
-      @keyframes bg-scrolling-reverse {
-        100% { background-position: 50px 50px; }
-      }
-    `;
+    styleSheet.innerText = `@keyframes bg-scrolling-reverse { 100% { background-position: 50px 50px; } }`;
     document.head.appendChild(styleSheet);
     return () => {
       document.head.removeChild(styleSheet);
@@ -118,7 +122,6 @@ export default function SignIn(): JSX.Element {
               autoplay
             />
             <p className="text-lg font-medium">Start engage users and communities!</p>
-
           </div>
         </div>
       </div>

@@ -1,9 +1,11 @@
 import { withIronSession } from 'next-iron-session';
 
+const BASE_URL = process.env.BASE_URL;
+
 const discordOAuth = {
   clientId: process.env.DISCORD_CLIENT_ID,
   clientSecret: process.env.DISCORD_CLIENT_SECRET,
-  redirectUri: `https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/discord/callback`, // Use env variable
+  redirectUri: `${BASE_URL}/api/connect/discord/callback`,
 };
 
 const discordHandler = async (req, res) => {
@@ -20,7 +22,7 @@ export default withIronSession(discordHandler, {
   password: process.env.SESSION_SECRET,
   cookieName: 'discord_oauth',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV,
     maxAge: 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',

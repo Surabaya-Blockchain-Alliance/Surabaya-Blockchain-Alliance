@@ -6,6 +6,7 @@ import { FaXTwitter } from 'react-icons/fa6';
 import { FaDiscord } from 'react-icons/fa';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { BsCheck2Circle } from 'react-icons/bs';
+import { auth, db, setDoc, doc } from '../config'; 
 
 export default function ProfileSetup() {
   const [username, setUsername] = useState('');
@@ -14,43 +15,51 @@ export default function ProfileSetup() {
   const [twitterConnected, setTwitterConnected] = useState(false);
   const [twitterUsername, setTwitterUsername] = useState(null);
   const [walletAddress, setWalletAddress] = useState(null);
+  const [profileImage, setProfileImage] = useState(null);
+  const [user, setUser] = useState(null); 
   const router = useRouter();
 
   useEffect(() => {
-  const checkConnections = async () => {
-    try {
-      const twitterResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/twitter-status', {
-        method: 'GET',
-        credentials: 'include',
-      });
-      if (twitterResponse.ok) {
-        const twitterData = await twitterResponse.json();
-        setTwitterConnected(twitterData.connected);
-        if (twitterData.username) {
-          setTwitterUsername(twitterData.username);
-          setUsername(twitterData.username);
+    const unsubscribe = auth.onAuthStateChanged(setUser);
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const checkConnections = async () => {
+      try {
+        const twitterResponse = await fetch(`http://localhost:3000/api/get/twitter-status`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (twitterResponse.ok) {
+          const twitterData = await twitterResponse.json();
+          setTwitterConnected(twitterData.connected);
+          if (twitterData.username) {
+            setTwitterUsername(twitterData.username);
+            setUsername(twitterData.username);
+          }
         }
-      }
 
-      const discordResponse = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/get/discord-username', {
-        method: 'GET',
-        credentials: 'include',
-      });
-      if (discordResponse.ok) {
-        const discordData = await discordResponse.json();
-        setDiscordUsername(discordData.username);
-        if (discordData.username && !twitterUsername) {
-          setUsername(discordData.username);
+        const discordResponse = await fetch(`http://localhost:3000/api/get/discord-username`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (discordResponse.ok) {
+          const discordData = await discordResponse.json();
+          setDiscordUsername(discordData.username);
+          if (discordData.username && !twitterUsername) {
+            setUsername(discordData.username);
+          }
         }
+      } catch (error) {
+        console.error('Error checking connections:', error);
       }
-    } catch (error) {
-      console.error('Error checking connections:', error);
-    }
-  };
+    };
 
-  checkConnections();
-}, []);
-
+    checkConnections();
+  }, [user, twitterUsername]);
 
   const handleConnectTwitter = async () => {
     try {
@@ -78,45 +87,49 @@ export default function ProfileSetup() {
   };
 
   const handleConnectDiscord = async () => {
-    window.location.href = 'https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/discord';
+    window.location.href = '/api/connect/discord';
   };
 
   const handleWalletConnect = (address) => {
     setWalletAddress(address);
-    console.log('Wallet address received in ProfileSetup:', address); // Debug
   };
 
   const handleProfileSave = async () => {
     try {
+      if (!user) {
+        alert('You must be logged in to save your profile!');
+        return;
+      }
+
       setLoading(true);
       const profileData = {
         username,
         twitterUsername: twitterConnected ? twitterUsername : null,
         discordUsername: discordUsername || null,
         walletAddress: walletAddress || null,
+        profileImage, 
       };
 
-      console.log('Profile data being sent:', profileData); // Debug
-
-      const response = await fetch('https://surabaya-blockchain-alliance-sand.vercel.app/api/save-profile', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Profile save failed');
-      }
-
-      console.log('Profile saved successfully:', profileData);
+      console.log('Profile data being sent:', profileData);
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, profileData);
       router.push('/profile');
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Failed to save profile. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImage(reader.result); 
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -137,7 +150,6 @@ export default function ProfileSetup() {
   const bgImage: string =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
 
-
   const currentYear = new Date().getFullYear();
 
   return (
@@ -149,30 +161,55 @@ export default function ProfileSetup() {
             background: `url(${bgImage}) repeat 0 0`,
             animation: 'bg-scrolling-reverse 0.92s linear infinite',
           }}>
-          <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10">
+          <div className="bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10 overflow-y-auto" style={{ maxHeight: '100vh' }}>
             <div className="flex justify-between items-center">
               <img src="/img/logo.png" alt="" className="h-full" width={200} />
             </div>
             <div className="pt-16 pb-5">
-              <h1 className="text-3xl font-extrabold text-gray-900">Completed your profiles!</h1>
-              <p className="text-sm font-medium text-gray-700">Fill in your details</p>
+              <h1 className="text-3xl font-extrabold text-gray-900">Complete your profile</h1>
+              <p className="text-sm font-medium text-gray-700">Fill in your details below</p>
             </div>
+            <div className="py-4 text-center">
+              <label className="text-black text-sm">Profile Image</label>
+              <div className="flex justify-center mt-3">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                    <span>No Image</span>
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                onChange={handleImageChange}
+                accept="image/*"
+                className="mt-2 text-center"
+              />
+            </div>
+
             <div className="py-2">
               <label className="form-control">
                 <div className="label">
                   <span className="label-text text-black">Username</span>
                 </div>
                 <input
-                  type="text" value={username}
+                  type="text"
+                  value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter a username" id='username'
+                  placeholder="Enter a username"
+                  id='username'
                   className="input bg-transparent input-bordered w-full" />
               </label>
-
             </div>
+
             <div className="space-y-4 mt-4">
               <button
-                className="btn w-full bg-black shadow-xl text-white space-x-2 flex justify-between hover:text-black hover:bg-white"
+                className="btn w-full bg-[#5865F2] border-[#5865F2] shadow-xl text-white space-x-2 flex justify-between hover:text-[#5865F2] hover:bg-white hover:border-[#5865F2]"
                 onClick={handleConnectTwitter}
                 disabled={loading || twitterConnected}
               >
@@ -202,7 +239,7 @@ export default function ProfileSetup() {
               </button>
             </div>
 
-            <footer className="footer bg-white text-black items-center sticky bottom-0 top-full">
+            <footer className="footer bg-white text-black items-center px-10 py-4 border-t mt-4">
               <aside className="grid-flow-col items-center">
                 <img src="/img/emblem.png" alt="" className="h-full" width={46} />
                 <p>Copyright © {currentYear} - All rights reserved</p>
@@ -217,15 +254,14 @@ export default function ProfileSetup() {
 
           <div className="bg-transparent text-center p-48">
             <h1 className="text-4xl font-semibold">
-            <span className='text-blue-800'>Cardano Hub</span> <span className='text-red-600'>Indonesia</span>
+              <span className='text-blue-800'>Cardano Hub</span> <span className='text-red-600'>Indonesia</span>
             </h1>
             <DotLottieReact
               src="https://lottie.host/36fcbde8-8edd-4016-ba3e-30b30b4cee21/pLkaTa0nFX.lottie"
               loop
               autoplay
             />
-            <p className="text-lg font-medium">Start engage users and communities!</p>
-
+            <p className="text-lg font-medium">Start engaging users and communities!</p>
           </div>
         </div>
       </div>
