@@ -3,7 +3,9 @@ import { useRouter } from 'next/router';
 import { auth, provider, signInWithPopup } from '../config';
 import { getFirestore, doc, getDoc } from 'firebase/firestore'; 
 import Link from 'next/link';
+import { signInWithCustomToken } from 'firebase/auth';
 import { FaGoogle, FaWallet } from 'react-icons/fa';
+import ConnectWallet from '../components/button/ConnectWallet';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -33,9 +35,11 @@ export default function SignIn(): JSX.Element {
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
+        localStorage.setItem('uid', user.uid); 
         router.push('/profile');
       } else {
         localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('uid', user.uid);
         router.push('/setup');
       }
     } catch (error) {
@@ -47,6 +51,42 @@ export default function SignIn(): JSX.Element {
   };
 
   const currentYear: number = new Date().getFullYear();
+
+  const handleWalletSignIn = async (walletAddress: string) => {
+    try {
+      setLoading(true);
+
+      const message = `Sign this message to authenticate with Cardano Hub: ${new Date().toISOString()}`;
+      const signature = await window.cardano.signMessage(message); 
+      const res = await fetch('/api/walletAuth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, signature, message }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to authenticate with wallet.');
+      }
+
+      const { token } = await res.json();
+
+      // Step 3: Sign in with the Firebase custom token
+      await signInWithCustomToken(auth, token);
+
+      const user = auth.currentUser;
+      if (user) {
+        localStorage.setItem('uid', user.uid);
+        router.push('/profile');
+      } else {
+        throw new Error('Authentication succeeded, but no user returned.');
+      }
+    } catch (error) {
+      console.error('Error during wallet sign-in:', error);
+      alert('Wallet authentication failed. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const styleSheet = document.createElement('style');
@@ -96,10 +136,48 @@ export default function SignIn(): JSX.Element {
               </button>
             </div>
             <div className="py-1">
-              <button className="btn w-full bg-black shadow-xl space-x-2 text-white hover:bg-white hover:text-black">
-                <FaWallet />Connect Wallet
-              </button>
+            <ConnectWallet
+  onConnect={async (walletAddress: string) => {
+    try {
+      setLoading(true);
+
+      const res = await fetch('/api/walletAuth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
+      });
+
+      if (res.status === 404) {
+        localStorage.setItem('uid', walletAddress);
+        return router.push('/setup');
+      }
+
+      if (!res.ok) {
+        throw new Error('Failed to authenticate with wallet.');
+      }
+
+      const { token } = await res.json();
+      await signInWithCustomToken(auth, token);
+
+      // Store user UID from Firebase
+      const user = auth.currentUser;
+      if (user) {
+        localStorage.setItem('uid', user.uid);
+        router.push('/profile');
+      } else {
+        throw new Error('Authentication succeeded, but no user returned.');
+      }
+    } catch (err) {
+      console.error('Wallet login error:', err);
+      alert('Wallet authentication failed. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  }}
+/>
+
             </div>
+
             <footer className="footer bg-white text-black items-center sticky bottom-0 top-full">
               <aside className="grid-flow-col items-center">
                 <img src="/img/emblem.png" alt="" className="h-full" width={46} />

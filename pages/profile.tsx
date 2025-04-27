@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router'; 
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
@@ -13,14 +13,22 @@ export default function ProfilePage() {
     telegram: null,
     walletAddress: null,
     pointsCollected: 0,
+    profilePicture: null,
   });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const fetchProfile = async () => {
+      const storedUid = localStorage.getItem('uid');
+      if (!storedUid) {
+        console.error('UID not found');
+        router.push('/');
+        return;
+      }
+  
       try {
-        const response = await fetch('/api/get-profile', {
+        const response = await fetch(`/api/get-profile?uid=${storedUid}`, {
           method: 'GET',
           credentials: 'include',
         });
@@ -32,7 +40,8 @@ export default function ProfilePage() {
             discord: data.discordUsername || null,
             telegram: data.telegram || null,
             walletAddress: data.walletAddress || null,
-            pointsCollected: data.pointsCollected || 0,
+            pointsCollected: data.points || 0,
+            profilePicture: data.profilePicture || null,
           });
         } else {
           console.error('Failed to fetch profile:', response.status);
@@ -43,9 +52,10 @@ export default function ProfilePage() {
         setLoading(false);
       }
     };
-
+  
     fetchProfile();
   }, []);
+  
 
   useEffect(() => {
     const styleSheet = document.createElement('style');
@@ -106,22 +116,37 @@ export default function ProfilePage() {
             <div className="pt-16 pb-5">
               <p className="text-2xl font-bold">Profile</p>
               <p className="text-sm font-medium">Welcome back, {userData.username}!</p>
-              <div className="flex justify-between mt-2">
+
+              {userData.profilePicture && (
+                <div className="mt-4">
+                  <img
+                    src={userData.profilePicture}
+                    alt="Profile"
+                    className="rounded-full w-24 h-24 object-cover border"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-between mt-4">
                 <p className="font-semibold">Points Collected:</p>
                 <p className="text-green-600">{userData.pointsCollected} Points</p>
               </div>
             </div>
 
-            <div className="py-4">
+            <div className="py-4 space-y-2">
               <div className="flex justify-between">
                 <p className="font-semibold">Twitter:</p>
                 <p className="text-blue-500">{userData.twitter ? `@${userData.twitter}` : 'Not connected'}</p>
               </div>
-              <div className="flex justify-between mt-2">
+              <div className="flex justify-between">
                 <p className="font-semibold">Discord:</p>
                 <p className="text-gray-700">{userData.discord || 'Not connected'}</p>
               </div>
-              <div className="flex justify-between mt-2">
+              <div className="flex justify-between">
+                <p className="font-semibold">Telegram:</p>
+                <p className="text-gray-700">{userData.telegram || 'Not connected'}</p>
+              </div>
+              <div className="flex justify-between">
                 <p className="font-semibold">Wallet Address:</p>
                 <p className="text-gray-700">
                   {userData.walletAddress

@@ -1,15 +1,17 @@
-import { db } from '../../config'; 
-import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../config';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default async function handler(req, res) {
+  const { uid } = req.query;
+  if (!uid) return res.status(400).json({ error: 'Missing UID' });
+
   try {
-    const usersCollection = collection(db, 'users');
-    const snapshot = await getDocs(usersCollection);
-    const userList = snapshot.docs.map(doc => doc.data());
-    
-    res.status(200).json(userList);
+    const userDoc = doc(db, 'users', uid);
+    const docSnap = await getDoc(userDoc);
+    if (!docSnap.exists()) return res.status(404).json({ error: 'User not found' });
+    res.status(200).json(docSnap.data());
   } catch (error) {
-    console.error('Error fetching data from Firestore:', error);
-    res.status(500).json({ error: 'Failed to fetch data' });
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
