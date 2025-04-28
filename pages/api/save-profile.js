@@ -23,6 +23,7 @@ export default async function handler(req, res) {
     for (const check of checks) {
       if (!check.value) continue;
     
+      
       const q = query(
         collection(db, 'users'),
         where(check.field, '==', check.value)

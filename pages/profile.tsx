@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { signOut } from 'firebase/auth'; 
 import Link from 'next/link';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
 import EventCard from '@/components/card/events';
+import { auth } from '../config';
 
 export default function ProfilePage() {
+  const [user, setUser] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true); 
   const [userData, setUserData] = useState({
     username: '',
     twitter: null,
@@ -19,6 +23,19 @@ export default function ProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (!firebaseUser) {
+        router.replace('/signin');
+      } else {
+        setUser(firebaseUser);
+      }
+      setCheckingAuth(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       const storedUid = localStorage.getItem('uid');
       if (!storedUid) {
@@ -26,7 +43,7 @@ export default function ProfilePage() {
         router.push('/');
         return;
       }
-  
+
       try {
         const response = await fetch(`/api/get-profile?uid=${storedUid}`, {
           method: 'GET',
@@ -52,10 +69,9 @@ export default function ProfilePage() {
         setLoading(false);
       }
     };
-  
-    fetchProfile();
-  }, []);
-  
+
+    if (user) fetchProfile();
+  }, [user]);
 
   useEffect(() => {
     const styleSheet = document.createElement('style');
@@ -76,28 +92,18 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (response.ok) {
-        console.log('Logged out successfully');
-        router.push('/');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Logout failed');
-      }
+      await signOut(auth);
+      localStorage.removeItem('uid');
+      localStorage.removeItem('user');
+      router.push('/'); 
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Error during Firebase logout:', error);
       alert('Failed to log out. Please try again.');
     }
   };
 
   const currentYear = new Date().getFullYear();
-
-  if (loading) {
+  if (checkingAuth || loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -108,9 +114,7 @@ export default function ProfilePage() {
           <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10">
             <div className="flex justify-between items-center">
               <LogoIcon />
-              <Link href="/" className="text-sm text-black">
-                Go to Dashboard
-              </Link>
+              <Link href="/" className="text-sm text-black">Go to Dashboard</Link>
             </div>
 
             <div className="pt-16 pb-5">

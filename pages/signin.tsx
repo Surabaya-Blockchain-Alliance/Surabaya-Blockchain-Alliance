@@ -69,8 +69,6 @@ export default function SignIn(): JSX.Element {
       }
 
       const { token } = await res.json();
-
-      // Step 3: Sign in with the Firebase custom token
       await signInWithCustomToken(auth, token);
 
       const user = auth.currentUser;
@@ -158,8 +156,6 @@ export default function SignIn(): JSX.Element {
 
       const { token } = await res.json();
       await signInWithCustomToken(auth, token);
-
-      // Store user UID from Firebase
       const user = auth.currentUser;
       if (user) {
         localStorage.setItem('uid', user.uid);
