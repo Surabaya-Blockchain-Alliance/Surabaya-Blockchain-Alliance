@@ -30,7 +30,7 @@ export default function EventPage() {
   ]);
 
   useEffect(() => {
-    setLoading(false); // Simulate data fetching complete
+    setLoading(false);
   }, []);
 
   const currentYear = new Date().getFullYear();
@@ -46,7 +46,6 @@ export default function EventPage() {
           <div className="flex flex-col space-y-6">
             <div className="flex-1">
               <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
-              {/* Display event cards in a grid layout, max 3 cards per row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {events.map((event) => (
                   <EventCard key={event.id} event={event} />
