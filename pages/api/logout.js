@@ -1,4 +1,4 @@
-import { withIronSessionApiRoute } from 'iron-session/next';
+import { withIronSession } from 'next-iron-session';
 
 const sessionOptions = {
   password: process.env.SESSION_SECRET,
@@ -32,4 +32,4 @@ async function handler(req, res) {
   }
 }
 
-export default withIronSessionApiRoute(handler, sessionOptions);
+export default withIronSession(handler, sessionOptions);
