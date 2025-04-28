@@ -134,15 +134,14 @@ export default function ProfileSetup() {
   }, []);
 
   const bgImage =
-    'data:image/png;base64,iVBOR...'; // truncated for brevity
+    'data:image/png;base64,iVBOR...'; 
   const currentYear = new Date().getFullYear();
 
-  // 🔒 While checking auth or redirecting, show nothing
+
   if (checkingAuth) {
     return <div className="h-screen w-full flex justify-center items-center text-lg">Checking authentication...</div>;
   }
 
-  // 🧑 Full setup UI for logged-in users
   return (
     <div className="min-h-screen bg-white">
       <div className="w-full h-screen text-gray-800">

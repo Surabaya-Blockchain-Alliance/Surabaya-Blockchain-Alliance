@@ -1,5 +1,5 @@
 import { withIronSessionApiRoute } from 'iron-session/next';
-import { sessionOptions } from '../../lib/session';
+import { sessionOptions } from './lib/session';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
