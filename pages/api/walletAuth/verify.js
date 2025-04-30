@@ -1,5 +1,5 @@
-const { checkSignature } = require('@meshsdk/core');
-const admin = require('firebase-admin');
+import { checkSignature } from '@meshsdk/core';
+import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   admin.initializeApp({
