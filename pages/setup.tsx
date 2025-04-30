@@ -87,30 +87,57 @@ export default function ProfileSetup() {
   };
 
   const handleProfileSave = async () => {
+    //const nonce = localStorage.getItem('wallet_nonce');
+  
+    if (!walletAddress) {
+      alert('Wallet not connected or nonce is missing.');
+      return;
+    }
+  
     try {
-      if (!user) {
-        alert('You must be logged in to save your profile!');
+      setLoading(true);
+  
+      const profileData = {
+        uid: user.uid,
+        username,
+        discordUsername,
+        twitterUsername,
+        profileImage,
+        walletAddress,
+        //nonce,
+      };
+  
+      const response = await fetch('/api/save-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+  
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        console.error('Invalid JSON response from server:', err);
+        alert('Unexpected server error. Please check server logs.');
         return;
       }
-
-      setLoading(true);
-      const profileData = {
-        username,
-        twitterUsername: twitterConnected ? twitterUsername : null,
-        discordUsername: discordUsername || null,
-        walletAddress: walletAddress || null,
-        profileImage,
-      };
-
-      await setDoc(doc(db, 'users', user.uid), profileData);
-      router.push('/profile');
+  
+      if (response.ok) {
+        router.push('/profile');
+      } else {
+        alert(data.error || 'Failed to save profile.');
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
+      alert('Unexpected error occurred.');
     } finally {
       setLoading(false);
     }
   };
+  
+  
+  
+
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -209,7 +236,14 @@ export default function ProfileSetup() {
                 <FaDiscord />
               </button>
 
-              <ConnectWallet onConnect={handleWalletConnect} />
+              <ConnectWallet
+                onConnect={handleWalletConnect}
+                onVerified={(address) => {
+                  console.log('Wallet verified:', address);
+                  setWalletAddress(address); 
+                }}
+              />
+
             </div>
 
             <div className="py-3">

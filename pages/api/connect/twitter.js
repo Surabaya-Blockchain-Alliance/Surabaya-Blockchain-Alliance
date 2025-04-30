@@ -42,12 +42,10 @@ const handler = async (req, res) => {
     if (!oauthToken || !oauthTokenSecret) {
       throw new Error('Failed to retrieve OAuth tokens from Twitter');
     }
-
-    // Store tokens in session
     req.session.set('oauth', { token: oauthToken, tokenSecret: oauthTokenSecret });
     await req.session.save();
 
-    console.log('Session saved:', req.session.get('oauth')); // Debug session
+    console.log('Session saved:', req.session.get('oauth')); 
 
     const authUrl = `https://api.twitter.com/oauth/authenticate?oauth_token=${oauthToken}`;
     return res.status(200).json({ authUrl });

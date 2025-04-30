@@ -65,8 +65,6 @@ const handler = async (req, res) => {
     if (!accessToken || !accessTokenSecret) {
       throw new Error('Failed to retrieve access tokens from Twitter');
     }
-
-    // Store Twitter credentials in session
     req.session.set('twitter', {
       accessToken,
       accessTokenSecret,
