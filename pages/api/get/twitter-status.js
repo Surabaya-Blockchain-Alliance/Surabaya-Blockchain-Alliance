@@ -20,7 +20,7 @@ export default withIronSession(handler, {
   password: process.env.SESSION_SECRET,
   cookieName: 'twitter_oauth',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV,
     maxAge: 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',

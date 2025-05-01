@@ -1,25 +1,17 @@
-import { withIronSession } from 'next-iron-session';
+import { db } from '../../config';
+import { doc, getDoc } from 'firebase/firestore';
 
-const handler = async (req, res) => {
-  const profile = req.session.get('profile') || {
-    username: '',
-    twitterUsername: null,
-    discordUsername: null,
-    walletAddress: null,
-    telegram: null, // Placeholder for future use
-    pointsCollected: 0, // Placeholder for future use
-  };
+export default async function handler(req, res) {
+  const { uid } = req.query;
+  if (!uid) return res.status(400).json({ error: 'Missing UID' });
 
-  return res.status(200).json(profile);
-};
-
-export default withIronSession(handler, {
-  password: process.env.SESSION_SECRET,
-  cookieName: 'user_profile',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 60 * 24 * 30 * 1000, // 30 days
-    httpOnly: true,
-    sameSite: 'lax',
-  },
-});
+  try {
+    const userDoc = doc(db, 'users', uid);
+    const docSnap = await getDoc(userDoc);
+    if (!docSnap.exists()) return res.status(404).json({ error: 'User not found' });
+    res.status(200).json(docSnap.data());
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}

@@ -1,7 +1,10 @@
 import { JSX, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { auth, provider, signInWithPopup } from '../config';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
+import WalletLogin from '../components/button/walletLogin';
+import { signInWithCustomToken } from 'firebase/auth';
 import { FaGoogle, FaWallet } from 'react-icons/fa';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
@@ -17,19 +20,30 @@ interface User {
 export default function SignIn(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const db = getFirestore();
 
-  // Google Sign-in handler
+  // Function to handle Google Sign-in
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       setLoading(true);
-      const result = await signInWithPopup(auth, provider);  
+      const result = await signInWithPopup(auth, provider);
 
       const user = result.user;
       if (!user) {
         throw new Error('Failed to sign in with Google');
       }
-      localStorage.setItem('user', JSON.stringify(user));
-      router.push('/setup');
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (userDoc.exists()) {
+        localStorage.setItem('uid', user.uid);
+        router.push('/profile');
+      } else {
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('uid', user.uid);
+        router.push('/setup');
+      }
     } catch (error) {
       console.error('Error during Google sign-in:', error);
       alert('Authentication failed. Please try again.');
@@ -38,21 +52,23 @@ export default function SignIn(): JSX.Element {
     }
   };
 
+  // Function to handle Wallet connection
+  const handleWalletConnect = (address: string) => {
+    setWalletAddress(address);
+  };
+
   const currentYear: number = new Date().getFullYear();
 
   useEffect(() => {
-    const styleSheet = document.createElement('style');
-    styleSheet.type = 'text/css';
-    styleSheet.innerText = `
-      @keyframes bg-scrolling-reverse {
-        100% { background-position: 50px 50px; }
-      }
-    `;
-    document.head.appendChild(styleSheet);
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, []);
+    const userUid = localStorage.getItem('uid');
+    if (userUid) {
+      router.push('/profile'); 
+    }
+    // Check if wallet address is available (i.e., connected) and redirect
+    if (walletAddress) {
+      router.push('/profile');
+    }
+  }, [walletAddress, router]);
 
   const bgImage: string =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
@@ -80,7 +96,7 @@ export default function SignIn(): JSX.Element {
             </div>
             <div className="pt-36 pb-5">
               <p className="text-lg font-bold">Welcome to Cardano Hub Indonesia</p>
-              <p className="text-sm font-medium">Start engage users and communities!</p>
+              <p className="text-sm font-medium">Start engaging users and communities!</p>
             </div>
             <div className="py-1">
               <button
@@ -92,10 +108,14 @@ export default function SignIn(): JSX.Element {
               </button>
             </div>
             <div className="py-1">
-              <button className="btn w-full bg-black shadow-xl space-x-2 text-white hover:bg-white hover:text-black">
-                <FaWallet />Connect Wallet
-              </button>
+              <WalletLogin
+                onConnect={handleWalletConnect}
+                onVerified={(address) => {
+                  setWalletAddress(address);
+                }}
+              />
             </div>
+
             <footer className="footer bg-white text-black items-center sticky bottom-0 top-full">
               <aside className="grid-flow-col items-center">
                 <img src="/img/emblem.png" alt="" className="h-full" width={46} />
@@ -110,15 +130,14 @@ export default function SignIn(): JSX.Element {
           </div>
           <div className="bg-transparent text-center p-48">
             <h1 className="text-4xl font-semibold">
-              <span className='text-blue-800'>Cardano Hub</span> <span className='text-red-600'>Indonesia</span>
+              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
             </h1>
             <DotLottieReact
               src="https://lottie.host/300794aa-cd62-4cdf-89ac-3463b38d29a7/wVcfBSixSv.lottie"
               loop
               autoplay
             />
-            <p className="text-lg font-medium">Start engage users and communities!</p>
-
+            <p className="text-lg font-medium">Start engaging users and communities!</p>
           </div>
         </div>
       </div>

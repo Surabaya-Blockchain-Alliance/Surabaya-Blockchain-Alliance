@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router'; 
+import { useRouter } from 'next/router';
+import { signOut } from 'firebase/auth'; 
 import Link from 'next/link';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
 import EventCard from '@/components/card/events';
+import { auth } from '../config';
 
 export default function ProfilePage() {
+  const [user, setUser] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true); 
   const [userData, setUserData] = useState({
     username: '',
     twitter: null,
@@ -13,14 +17,35 @@ export default function ProfilePage() {
     telegram: null,
     walletAddress: null,
     pointsCollected: 0,
+    profilePicture: null,
   });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (!firebaseUser) {
+        router.replace('/signin');
+      } else {
+        setUser(firebaseUser);
+      }
+      setCheckingAuth(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
+      const storedUid = localStorage.getItem('uid');
+      if (!storedUid) {
+        console.error('UID not found');
+        router.push('/');
+        return;
+      }
+
       try {
-        const response = await fetch('/api/get-profile', {
+        const response = await fetch(`/api/get-profile?uid=${storedUid}`, {
           method: 'GET',
           credentials: 'include',
         });
@@ -32,7 +57,8 @@ export default function ProfilePage() {
             discord: data.discordUsername || null,
             telegram: data.telegram || null,
             walletAddress: data.walletAddress || null,
-            pointsCollected: data.pointsCollected || 0,
+            pointsCollected: data.points || 0,
+            profilePicture: data.profilePicture || null,
           });
         } else {
           console.error('Failed to fetch profile:', response.status);
@@ -44,8 +70,8 @@ export default function ProfilePage() {
       }
     };
 
-    fetchProfile();
-  }, []);
+    if (user) fetchProfile();
+  }, [user]);
 
   useEffect(() => {
     const styleSheet = document.createElement('style');
@@ -66,28 +92,18 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (response.ok) {
-        console.log('Logged out successfully');
-        router.push('/');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Logout failed');
-      }
+      await signOut(auth);
+      localStorage.removeItem('uid');
+      localStorage.removeItem('user');
+      router.push('/'); 
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Error during Firebase logout:', error);
       alert('Failed to log out. Please try again.');
     }
   };
 
   const currentYear = new Date().getFullYear();
-
-  if (loading) {
+  if (checkingAuth || loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -98,30 +114,43 @@ export default function ProfilePage() {
           <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10">
             <div className="flex justify-between items-center">
               <LogoIcon />
-              <Link href="/" className="text-sm text-black">
-                Go to Dashboard
-              </Link>
+              <Link href="/" className="text-sm text-black">Go to Dashboard</Link>
             </div>
 
             <div className="pt-16 pb-5">
               <p className="text-2xl font-bold">Profile</p>
               <p className="text-sm font-medium">Welcome back, {userData.username}!</p>
-              <div className="flex justify-between mt-2">
+
+              {userData.profilePicture && (
+                <div className="mt-4">
+                  <img
+                    src={userData.profilePicture}
+                    alt="Profile"
+                    className="rounded-full w-24 h-24 object-cover border"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-between mt-4">
                 <p className="font-semibold">Points Collected:</p>
                 <p className="text-green-600">{userData.pointsCollected} Points</p>
               </div>
             </div>
 
-            <div className="py-4">
+            <div className="py-4 space-y-2">
               <div className="flex justify-between">
                 <p className="font-semibold">Twitter:</p>
                 <p className="text-blue-500">{userData.twitter ? `@${userData.twitter}` : 'Not connected'}</p>
               </div>
-              <div className="flex justify-between mt-2">
+              <div className="flex justify-between">
                 <p className="font-semibold">Discord:</p>
                 <p className="text-gray-700">{userData.discord || 'Not connected'}</p>
               </div>
-              <div className="flex justify-between mt-2">
+              <div className="flex justify-between">
+                <p className="font-semibold">Telegram:</p>
+                <p className="text-gray-700">{userData.telegram || 'Not connected'}</p>
+              </div>
+              <div className="flex justify-between">
                 <p className="font-semibold">Wallet Address:</p>
                 <p className="text-gray-700">
                   {userData.walletAddress
@@ -153,7 +182,6 @@ export default function ProfilePage() {
             </footer>
           </div>
 
-          {/* Right side - Event and Quest Cards */}
           <div className="h-screen w-full bg-white shadow-xl p-6">
             <div className="flex flex-col h-full space-y-6">
               <div className="flex-1">

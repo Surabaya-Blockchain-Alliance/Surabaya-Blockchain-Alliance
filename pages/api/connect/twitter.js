@@ -2,6 +2,7 @@ import axios from 'axios';
 import OAuth from 'oauth-1.0a';
 import crypto from 'crypto';
 import { withIronSession } from 'next-iron-session';
+const BASE_URL = process.env.BASE_URL;
 
 const oauth = new OAuth({
   consumer: {
@@ -19,7 +20,7 @@ const handler = async (req, res) => {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const callbackUrl = `https://surabaya-blockchain-alliance-sand.vercel.app/api/connect/twitter/callback`;
+  const callbackUrl = `${BASE_URL}/api/connect/twitter/callback`;
   const requestData = {
     url: 'https://api.twitter.com/oauth/request_token',
     method: 'POST',
@@ -41,12 +42,10 @@ const handler = async (req, res) => {
     if (!oauthToken || !oauthTokenSecret) {
       throw new Error('Failed to retrieve OAuth tokens from Twitter');
     }
-
-    // Store tokens in session
     req.session.set('oauth', { token: oauthToken, tokenSecret: oauthTokenSecret });
     await req.session.save();
 
-    console.log('Session saved:', req.session.get('oauth')); // Debug session
+    console.log('Session saved:', req.session.get('oauth')); 
 
     const authUrl = `https://api.twitter.com/oauth/authenticate?oauth_token=${oauthToken}`;
     return res.status(200).json({ authUrl });
@@ -60,7 +59,7 @@ export default withIronSession(handler, {
   password: process.env.SESSION_SECRET,
   cookieName: 'twitter_oauth',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV,
     maxAge: 60 * 60 * 1000, // 1 hour
     httpOnly: true,
     sameSite: 'lax',

@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@meshsdk/react';
+import { auth, provider, signInWithPopup } from '../../config';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { BrowserWallet } from '@meshsdk/core';
 import { FaWallet } from 'react-icons/fa6';
+import { signInWithCustomToken } from 'firebase/auth';
 
-const ConnectWallet = ({ onConnect }) => {
+
+const WalletLogin = ({ onConnect, onVerified }) => {
   const { wallet, connected, disconnect } = useWallet();
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -53,15 +57,15 @@ const ConnectWallet = ({ onConnect }) => {
     try {
       const walletInstance = await BrowserWallet.enable(walletId);
       const address = await getWalletAddress(walletInstance);
-  
+
       if (!address || !address.startsWith('addr')) {
         throw new Error('Invalid Cardano address returned.');
       }
-  
+
       setSelectedWallet({ ...walletInstance, address });
       setIsConnected(true);
       console.log(`Wallet connected: ${walletId}`, address);
-        await handleSignAndAuthenticate(walletInstance, address);
+      await handleSignAndAuthenticate(walletInstance, address);
     } catch (error) {
       console.error('Error enabling wallet:', error);
       alert('Failed to connect wallet.');
@@ -72,7 +76,7 @@ const ConnectWallet = ({ onConnect }) => {
     try {
       const res = await fetch(`/api/walletAuth?walletAddress=${walletAddress}`);
       const data = await res.json();
-      console.log('Fetched nonce:', data.nonce); 
+      console.log('Fetched nonce:', data.nonce);
       return data.nonce;
     } catch (error) {
       console.error("Error fetching nonce:", error);
@@ -84,11 +88,11 @@ const ConnectWallet = ({ onConnect }) => {
   const handleSignAndAuthenticate = async (walletInstance, walletAddress) => {
     try {
       setLoading(true);
-        const nonce = await fetchNonce(walletAddress);
+      const nonce = await fetchNonce(walletAddress);
       if (!nonce) return;
   
       const { key, signature } = await walletInstance.signData(nonce, walletAddress);
-        const response = await fetch('/api/walletAuth/verify', {
+      const response = await fetch('/api/walletAuth/signinVerify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nonce, walletAddress, signature, key }),
@@ -97,17 +101,41 @@ const ConnectWallet = ({ onConnect }) => {
       if (!response.ok) {
         throw new Error('Signature verification failed.');
       }
+  
+      const data = await response.json();
+      const firebaseToken = data.token;
+  
+      const result = await signInWithCustomToken(auth, firebaseToken);
+      const user = result.user;
+  
+      if (!user) {
+        throw new Error('Firebase sign-in with wallet failed.');
+      }
+  
+      // ✅ Store UID and redirect
+      localStorage.setItem('uid', user.uid);
+  
+      // 🧠 Now check if user exists in Firestore to redirect accordingly
+      const userRef = doc(getFirestore(), 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+  
+      if (userDoc.exists()) {
+        window.location.href = '/profile';
+      } else {
+        localStorage.setItem('user', JSON.stringify(user));
+        window.location.href = '/setup';
+      }
+  
+      onVerified(walletAddress);
       onConnect?.(walletAddress);
-      console.log('Wallet verified and connected:', walletAddress);
+      console.log('Wallet verified and Firebase signed in:', walletAddress);
     } catch (error) {
       console.error('Wallet auth failed:', error);
-      alert('Wallet verification failed. Try again.');
+      alert('Wallet authentication failed. Try again.');
     } finally {
       setLoading(false);
     }
   };
-  
-  
   
 
   const handleDisconnect = () => {
@@ -171,8 +199,6 @@ const ConnectWallet = ({ onConnect }) => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-export default ConnectWallet;
+   
+   </div> ); };
+export default WalletLogin;
