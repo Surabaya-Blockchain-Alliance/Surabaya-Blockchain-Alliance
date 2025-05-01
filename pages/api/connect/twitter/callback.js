@@ -17,7 +17,7 @@ const oauth = new OAuth({
 });
 
 const handler = async (req, res) => {
-  const { oauth_token, oauth_verifier } = req.query;
+  const { oauth_token, oauth_verifier, denied } = req.query;
   if (!oauth_token || !oauth_verifier) {
     return res.status(400).json({ error: 'Missing oauth_token or oauth_verifier in callback' });
   }
