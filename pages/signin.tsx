@@ -59,21 +59,17 @@ export default function SignIn(): JSX.Element {
 
   const currentYear: number = new Date().getFullYear();
 
-  // UseEffect to handle automatic redirection if user is already authenticated
   useEffect(() => {
-    // Check if the user is logged in via Google
     const userUid = localStorage.getItem('uid');
     if (userUid) {
-      router.push('/profile'); // Redirect to profile if user is logged in
+      router.push('/profile'); 
     }
-
     // Check if wallet address is available (i.e., connected) and redirect
     if (walletAddress) {
       router.push('/profile');
     }
   }, [walletAddress, router]);
 
-  // Background image for the page
   const bgImage: string =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
 

@@ -85,7 +85,6 @@ export default function ProfileSetup() {
 
   const handleWalletConnect = (address) => {
     setWalletAddress(address);
-    //console.log("User UID after wallet connect:", user?.uid); 
   };
 
   const handleProfileSave = async () => {

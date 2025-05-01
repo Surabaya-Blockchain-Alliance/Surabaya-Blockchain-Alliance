@@ -25,10 +25,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Log request for debugging
     console.log('Received request:', req.body);
-    
-    // Step 1: Check if nonce is valid
     const docRef = db.collection('WalletAuth').doc(walletAddress);
     const snapshot = await docRef.get();
 
@@ -48,7 +45,6 @@ export default async function handler(req, res) {
     
     await docRef.set({ nonce: '' }, { merge: true });
 
-    // Check for user matching wallet address
     const usersQuery = await db.collection('users')
       .where('walletAddress', '==', walletAddress)
       .limit(1)
@@ -59,11 +55,7 @@ export default async function handler(req, res) {
       const userDoc = usersQuery.docs[0];
       uid = userDoc.data().uid;
     }
-
-    // Generate Firebase token
     const token = await admin.auth().createCustomToken(uid);
-    console.log('Generated Firebase token:', token); // Log the token for debugging
-
     return res.status(200).json({ token });
   } catch (error) {
     console.error('Error verifying and generating token:', error);
