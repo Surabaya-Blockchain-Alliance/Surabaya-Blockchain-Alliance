@@ -1,11 +1,11 @@
 import { JSX, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { auth, provider, signInWithPopup } from '../config';
-import { getFirestore, doc, getDoc } from 'firebase/firestore'; 
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
+import WalletLogin from '../components/button/walletLogin';
 import { signInWithCustomToken } from 'firebase/auth';
 import { FaGoogle, FaWallet } from 'react-icons/fa';
-import ConnectWallet from '../components/button/ConnectWallet';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -20,12 +20,14 @@ interface User {
 export default function SignIn(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const db = getFirestore();
 
+  // Function to handle Google Sign-in
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       setLoading(true);
-      const result = await signInWithPopup(auth, provider);  
+      const result = await signInWithPopup(auth, provider);
 
       const user = result.user;
       if (!user) {
@@ -35,7 +37,7 @@ export default function SignIn(): JSX.Element {
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
-        localStorage.setItem('uid', user.uid); 
+        localStorage.setItem('uid', user.uid);
         router.push('/profile');
       } else {
         localStorage.setItem('user', JSON.stringify(user));
@@ -50,52 +52,28 @@ export default function SignIn(): JSX.Element {
     }
   };
 
-  const currentYear: number = new Date().getFullYear();
-
-  const handleWalletSignIn = async (walletAddress: string) => {
-    try {
-      setLoading(true);
-
-      const message = `Sign this message to authenticate with Cardano Hub: ${new Date().toISOString()}`;
-      const signature = await window.cardano.signMessage(message); 
-      const res = await fetch('/api/walletAuth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress, signature, message }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to authenticate with wallet.');
-      }
-
-      const { token } = await res.json();
-      await signInWithCustomToken(auth, token);
-
-      const user = auth.currentUser;
-      if (user) {
-        localStorage.setItem('uid', user.uid);
-        router.push('/profile');
-      } else {
-        throw new Error('Authentication succeeded, but no user returned.');
-      }
-    } catch (error) {
-      console.error('Error during wallet sign-in:', error);
-      alert('Wallet authentication failed. Try again.');
-    } finally {
-      setLoading(false);
-    }
+  // Function to handle Wallet connection
+  const handleWalletConnect = (address: string) => {
+    setWalletAddress(address);
   };
 
-  useEffect(() => {
-    const styleSheet = document.createElement('style');
-    styleSheet.type = 'text/css';
-    styleSheet.innerText = `@keyframes bg-scrolling-reverse { 100% { background-position: 50px 50px; } }`;
-    document.head.appendChild(styleSheet);
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, []);
+  const currentYear: number = new Date().getFullYear();
 
+  // UseEffect to handle automatic redirection if user is already authenticated
+  useEffect(() => {
+    // Check if the user is logged in via Google
+    const userUid = localStorage.getItem('uid');
+    if (userUid) {
+      router.push('/profile'); // Redirect to profile if user is logged in
+    }
+
+    // Check if wallet address is available (i.e., connected) and redirect
+    if (walletAddress) {
+      router.push('/profile');
+    }
+  }, [walletAddress, router]);
+
+  // Background image for the page
   const bgImage: string =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
 
@@ -122,7 +100,7 @@ export default function SignIn(): JSX.Element {
             </div>
             <div className="pt-36 pb-5">
               <p className="text-lg font-bold">Welcome to Cardano Hub Indonesia</p>
-              <p className="text-sm font-medium">Start engage users and communities!</p>
+              <p className="text-sm font-medium">Start engaging users and communities!</p>
             </div>
             <div className="py-1">
               <button
@@ -134,44 +112,12 @@ export default function SignIn(): JSX.Element {
               </button>
             </div>
             <div className="py-1">
-            <ConnectWallet
-  onConnect={async (walletAddress: string) => {
-    try {
-      setLoading(true);
-
-      const res = await fetch('/api/walletAuth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress }),
-      });
-
-      if (res.status === 404) {
-        localStorage.setItem('uid', walletAddress);
-        return router.push('/setup');
-      }
-
-      if (!res.ok) {
-        throw new Error('Failed to authenticate with wallet.');
-      }
-
-      const { token } = await res.json();
-      await signInWithCustomToken(auth, token);
-      const user = auth.currentUser;
-      if (user) {
-        localStorage.setItem('uid', user.uid);
-        router.push('/profile');
-      } else {
-        throw new Error('Authentication succeeded, but no user returned.');
-      }
-    } catch (err) {
-      console.error('Wallet login error:', err);
-      alert('Wallet authentication failed. Try again.');
-    } finally {
-      setLoading(false);
-    }
-  }}
-/>
-
+              <WalletLogin
+                onConnect={handleWalletConnect}
+                onVerified={(address) => {
+                  setWalletAddress(address);
+                }}
+              />
             </div>
 
             <footer className="footer bg-white text-black items-center sticky bottom-0 top-full">
@@ -188,14 +134,14 @@ export default function SignIn(): JSX.Element {
           </div>
           <div className="bg-transparent text-center p-48">
             <h1 className="text-4xl font-semibold">
-              <span className='text-blue-800'>Cardano Hub</span> <span className='text-red-600'>Indonesia</span>
+              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
             </h1>
             <DotLottieReact
               src="https://lottie.host/300794aa-cd62-4cdf-89ac-3463b38d29a7/wVcfBSixSv.lottie"
               loop
               autoplay
             />
-            <p className="text-lg font-medium">Start engage users and communities!</p>
+            <p className="text-lg font-medium">Start engaging users and communities!</p>
           </div>
         </div>
       </div>

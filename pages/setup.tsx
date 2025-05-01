@@ -26,6 +26,7 @@ export default function ProfileSetup() {
         router.replace('/signin');
       } else {
         setUser(firebaseUser);
+        console.log("User authenticated before wallet connect:", firebaseUser); // Log auth and uid here
       }
       setCheckingAuth(false);
     });
@@ -84,11 +85,10 @@ export default function ProfileSetup() {
 
   const handleWalletConnect = (address) => {
     setWalletAddress(address);
+    //console.log("User UID after wallet connect:", user?.uid); 
   };
 
   const handleProfileSave = async () => {
-    //const nonce = localStorage.getItem('wallet_nonce');
-  
     if (!walletAddress) {
       alert('Wallet not connected or nonce is missing.');
       return;
@@ -96,37 +96,17 @@ export default function ProfileSetup() {
   
     try {
       setLoading(true);
-  
-      const profileData = {
-        uid: user.uid,
+        const profileData = {
+        uid: user.uid, 
         username,
         discordUsername,
         twitterUsername,
         profileImage,
-        walletAddress,
-        //nonce,
+        walletAddress, 
       };
+      await setDoc(doc(db, 'users', user.uid), profileData);
   
-      const response = await fetch('/api/save-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData),
-      });
-  
-      let data;
-      try {
-        data = await response.json();
-      } catch (err) {
-        console.error('Invalid JSON response from server:', err);
-        alert('Unexpected server error. Please check server logs.');
-        return;
-      }
-  
-      if (response.ok) {
-        router.push('/profile');
-      } else {
-        alert(data.error || 'Failed to save profile.');
-      }
+      router.push('/profile');
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Unexpected error occurred.');
@@ -134,8 +114,6 @@ export default function ProfileSetup() {
       setLoading(false);
     }
   };
-  
-  
   
 
 
@@ -163,7 +141,6 @@ export default function ProfileSetup() {
   const bgImage =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
   const currentYear = new Date().getFullYear();
-
 
   if (checkingAuth) {
     return <div className="h-screen w-full flex justify-center items-center text-lg">Checking authentication...</div>;
@@ -240,10 +217,9 @@ export default function ProfileSetup() {
                 onConnect={handleWalletConnect}
                 onVerified={(address) => {
                   console.log('Wallet verified:', address);
-                  setWalletAddress(address); 
+                  setWalletAddress(address);
                 }}
               />
-
             </div>
 
             <div className="py-3">

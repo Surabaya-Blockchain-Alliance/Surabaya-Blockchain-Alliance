@@ -1,5 +1,6 @@
-import { checkSignature } from '@meshsdk/core';
+import { generateNonce } from '@meshsdk/core';
 import admin from 'firebase-admin';
+import { checkSignature } from '@meshsdk/core';
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -19,12 +20,15 @@ export default async function handler(req, res) {
   }
 
   const { walletAddress, signature, key, nonce } = req.body;
-
   if (!walletAddress || !signature || !nonce || !key) {
     return res.status(400).json({ error: 'Missing walletAddress, signature, key, or nonce' });
   }
 
   try {
+    // Log request for debugging
+    console.log('Received request:', req.body);
+    
+    // Step 1: Check if nonce is valid
     const docRef = db.collection('WalletAuth').doc(walletAddress);
     const snapshot = await docRef.get();
 
@@ -38,15 +42,31 @@ export default async function handler(req, res) {
     }
 
     const isValid = checkSignature(nonce, { key, signature }, walletAddress);
-
     if (!isValid) {
       return res.status(401).json({ error: 'Signature verification failed' });
     }
+    
     await docRef.set({ nonce: '' }, { merge: true });
 
-    return res.status(200).json({ message: 'Wallet verified successfully' });
+    // Check for user matching wallet address
+    const usersQuery = await db.collection('users')
+      .where('walletAddress', '==', walletAddress)
+      .limit(1)
+      .get();
+
+    let uid = walletAddress;
+    if (!usersQuery.empty) {
+      const userDoc = usersQuery.docs[0];
+      uid = userDoc.data().uid;
+    }
+
+    // Generate Firebase token
+    const token = await admin.auth().createCustomToken(uid);
+    console.log('Generated Firebase token:', token); // Log the token for debugging
+
+    return res.status(200).json({ token });
   } catch (error) {
-    console.error('Error verifying wallet:', error);
-    return res.status(500).json({ error: 'Verification error' });
+    console.error('Error verifying and generating token:', error);
+    return res.status(500).json({ error: 'Token generation error' });
   }
 }
