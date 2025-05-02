@@ -24,6 +24,7 @@
     "iron-session": "^8.0.4",
     "json2csv": "^6.0.0-alpha.2",
     "lottie-web": "^5.12.2",
+    "lucid-cardano": "^0.10.11",
     "next": "15.1.6",
     "next-auth": "^4.24.11",
     "next-iron-session": "^4.2.0",
