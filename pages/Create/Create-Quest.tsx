@@ -221,7 +221,6 @@ export default function CreateQuestPage() {
             <h1 className="text-4xl font-semibold">
               <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
             </h1>
-            {/* Adjust the width of the animation */}
             <DotLottieReact
               src="https://lottie.host/7b819196-d55f-494b-b0b1-c78b39656bfe/RD0XuFNO9P.lottie"
               loop

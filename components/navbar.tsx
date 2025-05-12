@@ -20,6 +20,8 @@ const menuItems: MenuItem[] = [
     subMenu: [
       { label: "About", href: "#", description: "Learn more about our community" },
       { label: "Read Docs", href: "#", description: "Find documentation on how to get started" },
+      { label: "Create Article", href: "/blogpost/create", description: "Start writing your blog post!" }, 
+
     ],
   },
   { label: "Quests", href: "#" },

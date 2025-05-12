@@ -2,6 +2,13 @@ import { useState } from "react";
 import { BsCheck2Circle } from "react-icons/bs";
 import ConnectWallet from "@/components/button/ConnectWallet";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import {
+  BlockfrostProvider,
+  MeshTxBuilder,
+  ForgeScript,
+  stringToHex,
+  resolveScriptHash,
+} from "@meshsdk/core";
 
 export default function MintNFTPage() {
   const [form, setForm] = useState({
@@ -10,50 +17,81 @@ export default function MintNFTPage() {
     image: "",
     date: "",
   });
+  const [wallet, setWallet] = useState(null);
   const [walletAddress, setWalletAddress] = useState(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const currentYear = new Date().getFullYear();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async () => {
-    if (!walletAddress) {
-      return alert("Wallet not connected.");
+    if (!wallet || !walletAddress) {
+      alert("Wallet not connected.");
+      return;
     }
 
     try {
       setLoading(true);
-      setStatus("Getting UTxO...");
+      setStatus("Fetching wallet data...");
 
-      const utxoRes = await fetch(`/api/get-utxo?address=${walletAddress}`);
-      const { utxo } = await utxoRes.json();
-
-      setStatus("Minting NFT...");
-
-      const res = await fetch("/api/mint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          utxoRef: utxo,
-          userAddress: walletAddress,
-          creatorVKHHex: walletAddress, 
-        }),
+      const blockfrostProvider = new BlockfrostProvider('previewL8sqDM3dHh10f55niIUiXELSAJm2OvJj');
+      const txBuilder = new MeshTxBuilder({
+        fetcher: blockfrostProvider,
+        evaluator: blockfrostProvider,
       });
 
-      const result = await res.json();
-      if (res.ok) {
-        setStatus(`✅ Minted! TxHash: ${result.txHash}`);
-      } else {
-        setStatus(`❌ Mint failed: ${result.error}`);
-      }
+      const utxos = await wallet.getUtxos();
+      const changeAddress = await wallet.getChangeAddress();
+
+      const forgingScript = ForgeScript.withOneSignature(changeAddress);
+      const policyId = resolveScriptHash(forgingScript);
+      const tokenName = form.name;
+      const tokenNameHex = stringToHex(tokenName);
+
+      const metadata = {
+        [policyId]: {
+          [tokenName]: {
+            name: form.name,
+            url: form.url,
+            image: form.image,
+            date: form.date,
+          },
+        },
+      };
+
+      const asset = {
+        assetName: tokenName,
+        assetQuantity: "1",
+        metadata: {
+          name: form.name,
+          image: form.image,
+          mediaType: "image/jpg",
+          description: form.url,
+        },
+        label: "721",
+        recipient: walletAddress,
+      };
+
+      setStatus("Building transaction...");
+
+      const tx = await txBuilder
+        .mintAsset(forgingScript, asset)
+        .metadataValue(721, metadata)
+        .changeAddress(changeAddress)
+        .selectUtxosFrom(utxos)
+        .complete();
+
+      setStatus("Signing transaction...");
+
+      const signedTx = await wallet.signTx(tx);
+      const txHash = await wallet.submitTx(signedTx);
+
+      setStatus(`✅ Minted! TxHash: ${txHash}`);
     } catch (err) {
       console.error(err);
-      setStatus("Something went wrong.");
+      setStatus("❌ Something went wrong during minting.");
     } finally {
       setLoading(false);
     }
@@ -66,7 +104,7 @@ export default function MintNFTPage() {
           className="flex justify-between items-start gap-5"
           style={{
             fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            background: `url('/img/bg-tile.png') repeat 0 0`,
+            //background: `url('/img/bg-tile.png') repeat 0 0`,
             animation: 'bg-scrolling-reverse 0.92s linear infinite',
           }}
         >
@@ -129,21 +167,14 @@ export default function MintNFTPage() {
               </div>
 
               <ConnectWallet
-                onConnect={setWalletAddress}
+                onConnect={(walletInstance) => {
+                  setWallet(walletInstance);
+                }}
                 onVerified={(address) => {
                   console.log("Wallet verified:", address);
                   setWalletAddress(address);
                 }}
               />
-
-              <button
-                className="btn w-full bg-black text-white hover:bg-gray-800"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? "Minting..." : "Mint NFT"}
-                <BsCheck2Circle className="text-lg ml-2" />
-              </button>
 
               {status && (
                 <div className="alert alert-info mt-2">
@@ -155,14 +186,15 @@ export default function MintNFTPage() {
             <footer className="footer bg-white text-black items-center px-10 py-4 border-t mt-4">
               <aside className="grid-flow-col items-center">
                 <img src="/img/emblem.png" alt="" width={46} />
-                <p>© {currentYear} - All rights reserved</p>
+                <p>© {new Date().getFullYear()} - All rights reserved</p>
               </aside>
             </footer>
           </div>
 
           <div className="bg-transparent text-center p-48">
             <h1 className="text-4xl font-semibold">
-              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
+              <span className="text-blue-800">Cardano Hub</span>{" "}
+              <span className="text-red-600">Indonesia</span>
             </h1>
             <DotLottieReact
               src="https://lottie.host/eadea72b-3c6d-4de1-ad4e-81dd473a973e/u65MPHblsV.lottie"
@@ -171,7 +203,7 @@ export default function MintNFTPage() {
               style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
             />
             <p className="text-lg font-meedium">Create exclusive NFT access for events</p>
-          </div>  
+          </div>
         </div>
       </div>
     </div>
