@@ -36,7 +36,7 @@ export default function MintNFTPage() {
       setLoading(true);
       setStatus("Fetching wallet data...");
 
-      const blockfrostProvider = new BlockfrostProvider('previewL8sqDM3dHh10f55niIUiXELSAJm2OvJj');
+      const blockfrostProvider = new BlockfrostProvider('');
       const txBuilder = new MeshTxBuilder({
         fetcher: blockfrostProvider,
         evaluator: blockfrostProvider,
