@@ -1,4 +1,4 @@
-import { getLucidInstance } from "../../firebase/lucid.js"; // make sure this is .js too
+import { getLucidInstance } from "../../firebase/lucid.js"; 
 
 export default async function handler(req, res) {
   const { address } = req.query;
