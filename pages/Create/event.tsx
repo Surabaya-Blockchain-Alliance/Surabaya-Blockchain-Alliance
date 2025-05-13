@@ -96,7 +96,7 @@ export default function MintNFTPage() {
       const policyId = resolveScriptHash(PlutusAlwaysSucceedScript.address, "V1");
       const tokenNameHex = stringToHex(form.name);
       const txBuilder = new MeshTxBuilder({
-        fetcher: new BlockfrostProvider("previewL8sqDM3dHh10f55niIUiXELSAJm2OvJj"),
+        fetcher: new BlockfrostProvider("<blockfrostAPI>"),
         verbose: true,
       });
 
@@ -160,7 +160,6 @@ export default function MintNFTPage() {
         }}
       />
 
-      {/* Foreground Layer */}
       <div className="relative z-10 flex-grow flex flex-col">
         <Navbar />
 
