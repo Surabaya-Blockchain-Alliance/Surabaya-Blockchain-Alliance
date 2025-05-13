@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useState } from "react";
 import Hero from "@/components/hero";
 import Quests from "@/components/quests";
-import Partnerships from "@/components/partnerships";
+import Partnerships from "@/pages/partnerships";
 import JoinCommunity from "@/components/join-community";
 import Footer from "@/components/footer";
 
