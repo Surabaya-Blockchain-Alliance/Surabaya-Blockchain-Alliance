@@ -2,8 +2,6 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { BsArrowLeft } from "react-icons/bs";
 import { Teko } from "next/font/google";
-import Navbar from "../components/navbar";
-import Footer from "../components/footer";
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
@@ -59,7 +57,6 @@ const Partnerships: React.FC = () => {
   return (
     <div className="min-h-screen text-black relative overflow-hidden">
       <div className="relative z-20">
-         <Navbar />
       </div>
 
       <div
@@ -124,7 +121,6 @@ const Partnerships: React.FC = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   );
 };

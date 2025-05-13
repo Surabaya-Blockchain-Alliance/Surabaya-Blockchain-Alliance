@@ -85,14 +85,14 @@ export default function MintNFTPage() {
 
   const handleSignMinter = async () => {
     if (!wallet || !walletAddress) {
-      setStatus("❌ Wallet not connected.");
+      setStatus(" Wallet not connected.");
       return;
     }
     try {
       setLoading(true);
       setStatus("Fetching wallet data...");
       const utxos = await wallet.getUtxos();
-      if (!utxos || utxos.length === 0) throw new Error("❌ No UTxOs found.");
+      if (!utxos || utxos.length === 0) throw new Error(" No UTxOs found.");
       const policyId = resolveScriptHash(PlutusAlwaysSucceedScript.address, "V1");
       const tokenNameHex = stringToHex(form.name);
       const txBuilder = new MeshTxBuilder({
@@ -135,7 +135,7 @@ export default function MintNFTPage() {
       const txHash = await wallet.submitTx(signedTx);
       setStatus(`✅ Minted! TxHash: ${txHash}`);
     } catch (err) {
-      setStatus("❌ Something went wrong during minting.");
+      setStatus(" Something went wrong during minting.");
     } finally {
       setLoading(false);
     }
