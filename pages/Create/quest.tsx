@@ -9,17 +9,37 @@ export default function CreateQuestPage() {
     description: "",
     reward: "",
     deadline: "",
-    twitter: "",
-    discord: "",
-    retweetLink: "",
-    likePostLink: "",
-    additionalActions: "",
+    tasks: [], // Store the tasks in this array
   });
   const [walletAddress, setWalletAddress] = useState(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
   const currentYear = new Date().getFullYear();
+
+  // Handle task input changes (like adding task points and links)
+  const handleTaskChange = (index, e) => {
+    const updatedTasks = [...form.tasks];
+    updatedTasks[index][e.target.name] = e.target.value;
+    setForm({ ...form, tasks: updatedTasks });
+  };
+
+  // Add a new task to the form
+  const addTask = (taskType) => {
+    setForm({
+      ...form,
+      tasks: [
+        ...form.tasks,
+        { taskType, link: "", points: 1 }, // Default task with points = 1
+      ],
+    });
+  };
+
+  // Remove a task from the form
+  const removeTask = (index) => {
+    const updatedTasks = form.tasks.filter((_, i) => i !== index);
+    setForm({ ...form, tasks: updatedTasks });
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -33,6 +53,7 @@ export default function CreateQuestPage() {
     try {
       setLoading(true);
       setStatus("Processing quest...");
+
       const res = await fetch("/api/create-quest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,7 +84,6 @@ export default function CreateQuestPage() {
           className="flex justify-between items-start gap-5"
           style={{
             fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            //background: `url('/img/bg-tile.png') repeat 0 0`,
             animation: 'bg-scrolling-reverse 0.92s linear infinite',
           }}
         >
@@ -124,65 +144,56 @@ export default function CreateQuestPage() {
                 />
               </div>
 
-              {/* Social Media Actions */}
-              <div className="form-control">
-                <label className="label text-black">Follow Twitter (Link)</label>
-                <input
-                  type="text"
-                  name="twitter"
-                  placeholder="Enter Twitter profile link"
-                  value={form.twitter}
-                  onChange={handleChange}
-                  className="input input-bordered w-full bg-transparent"
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label text-black">Join Discord (Invite Link)</label>
-                <input
-                  type="text"
-                  name="discord"
-                  placeholder="Enter Discord invite link"
-                  value={form.discord}
-                  onChange={handleChange}
-                  className="input input-bordered w-full bg-transparent"
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label text-black">Retweet Link</label>
-                <input
-                  type="text"
-                  name="retweetLink"
-                  placeholder="Enter retweet link"
-                  value={form.retweetLink}
-                  onChange={handleChange}
-                  className="input input-bordered w-full bg-transparent"
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label text-black">Like Post Link</label>
-                <input
-                  type="text"
-                  name="likePostLink"
-                  placeholder="Enter like post link"
-                  value={form.likePostLink}
-                  onChange={handleChange}
-                  className="input input-bordered w-full bg-transparent"
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label text-black">Additional Actions (e.g., Share tweet)</label>
-                <input
-                  type="text"
-                  name="additionalActions"
-                  placeholder="Other quest actions"
-                  value={form.additionalActions}
-                  onChange={handleChange}
-                  className="input input-bordered w-full bg-transparent"
-                />
+              {/* Task input fields */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Tasks</h3>
+                {form.tasks.map((task, index) => (
+                  <div key={index} className="form-control flex items-center gap-4">
+                    <input
+                      type="text"
+                      name="link"
+                      value={task.link}
+                      onChange={(e) => handleTaskChange(index, e)}
+                      placeholder={`Link for ${task.taskType}`}
+                      className="input input-bordered w-1/2"
+                    />
+                    <input
+                      type="number"
+                      name="points"
+                      value={task.points}
+                      onChange={(e) => handleTaskChange(index, e)}
+                      placeholder="Points"
+                      className="input input-bordered w-1/4"
+                    />
+                    <button
+                      className="btn btn-danger w-1/6"
+                      onClick={() => removeTask(index)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <div className="flex gap-4">
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => addTask("Follow Twitter")}
+                  >
+                    Add Follow Twitter Task
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => addTask("Follow Discord")}
+                  >
+                    Add Follow Discord Task
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => addTask("Join Discord")}
+                  >
+                    Add Join Discord Task
+                  </button>
+                  {/* Add more task buttons here */}
+                </div>
               </div>
 
               <ConnectWallet
@@ -228,7 +239,7 @@ export default function CreateQuestPage() {
               style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
             />
             <p className="text-lg font-medium">Complete social actions and earn rewards!</p>
-          </div>  
+          </div>
         </div>
       </div>
     </div>
