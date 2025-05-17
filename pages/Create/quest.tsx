@@ -98,6 +98,7 @@ export default function CreateQuestPage() {
             </div>
 
             <div className="space-y-4">
+              {/* Quest Form Inputs */}
               <div className="form-control">
                 <label className="label text-black">Quest Name</label>
                 <input
@@ -192,10 +193,10 @@ export default function CreateQuestPage() {
                   >
                     Add Join Discord Task
                   </button>
-                  {/* Add more task buttons here */}
                 </div>
               </div>
 
+              {/* Connect Wallet Button */}
               <ConnectWallet
                 onConnect={setWalletAddress}
                 onVerified={(address) => {
@@ -204,6 +205,7 @@ export default function CreateQuestPage() {
                 }}
               />
 
+              {/* Create Quest Button */}
               <button
                 className="btn w-full bg-black text-white hover:bg-gray-800"
                 onClick={handleSubmit}
@@ -213,6 +215,7 @@ export default function CreateQuestPage() {
                 <BsCheck2Circle className="text-lg ml-2" />
               </button>
 
+              {/* Status Messages */}
               {status && (
                 <div className="alert alert-info mt-2">
                   <span>{status}</span>
