@@ -21,7 +21,7 @@ const geistTeko = Teko({
 
 const PlutusScriptHash = "c2f5afd32a18d03601f7adf6a4a01966d8919e94249f936290048870";
 const policyId = "d3286808dd73d02a43368aabeba0e09690788b88f6147f61bc7c095d";
-const blockfrostKey = "";
+const blockfrostKey = process.env.BLOCKFROST_KEY;
 
 // Font helper
 const stringToHex = (str) =>
@@ -78,15 +78,13 @@ export default function MintNFTPage() {
       const usedAddresses = await wallet.getUsedAddresses();
       const address = usedAddresses[0];
       const assetName = form.name || "EventNFT";
-  
-      // Build metadata from form input
-      const metadata = {
+        const metadata = {
         "721": {
           [policyId]: {
             [assetName]: {
               name: form.name,
               description: form.description || "An event NFT on Cardano",
-              image: form.image || "ipfs://default-image",
+              image: form.image || "https://",
               mediaType: "image/jpeg",
               url: form.url,
               creator: address.slice(0, 64),
@@ -102,9 +100,9 @@ export default function MintNFTPage() {
         ForgeScript.withOneSignature(changeAddress),
         {
           assetName,
-          assetQuantity: "1", // must be string or bigint
+          assetQuantity: "1",
           metadata: metadata,
-          label: "721", // label is required for NFT metadata
+          label: "721",
           recipient: address,
         }
       );
@@ -112,7 +110,7 @@ export default function MintNFTPage() {
       const unsignedTx = await tx.build();
       const signedTx = await wallet.signTx(unsignedTx);
       const txHash = await wallet.submitTx(signedTx);
-      const txLink = `https://preview.cexplorer.io/tx/${txHash}`;
+      const txLink = `https://preview.cardanoscan.io/transaction/${txHash}`;
       const shortTxHash = `${txHash.slice(0, 6)}...${txHash.slice(-4)}`;
       setStatus(
         <>
