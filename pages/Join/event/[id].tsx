@@ -99,7 +99,6 @@ export default function EventDetailsPage() {
     fetchUserProfile();
   }, [user]);
 
-  // Handle wallet connection via ConnectWallet component
   const handleWalletConnect = (address) => {
     if (isValidCardanoAddress(address)) {
       setWalletAddress(address);
@@ -111,7 +110,6 @@ export default function EventDetailsPage() {
     }
   };
 
-  // Handle joining the event
   const handleJoinEvent = async () => {
     if (!user || !auth.currentUser || user.uid !== auth.currentUser.uid) {
       console.error("Authentication error: User not authenticated or UID mismatch", {
@@ -354,7 +352,6 @@ export default function EventDetailsPage() {
               </div>
             </div>
 
-            {/* Replace wallet connection button with ConnectWallet component */}
             <ConnectWallet onConnect={handleWalletConnect} />
 
             {walletAddress && (
