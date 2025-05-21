@@ -8,7 +8,7 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { BsArrowLeft } from "react-icons/bs";
 import { FaCheckCircle } from "react-icons/fa";
-import ConnectWallet from "@/components/button/ConnectWallet";
+import { BrowserWallet } from "@meshsdk/core";
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
@@ -22,8 +22,8 @@ export default function EventCheckInPage() {
   const [error, setError] = useState(null);
   const [checkInStatus, setCheckInStatus] = useState("");
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
+  const [isEventStarted, setIsEventStarted] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
-  const [walletAddress, setWalletAddress] = useState(null); 
   const router = useRouter();
   const { id } = router.query;
 
@@ -65,6 +65,15 @@ export default function EventCheckInPage() {
           setHasJoined(false);
         }
 
+        if (eventData.time && eventData.timezone) {
+          const eventDateTime = new Date(eventData.time);
+          const now = new Date();
+          const nowInEventTimezone = new Date(
+            now.toLocaleString("en-US", { timeZone: eventData.timezone })
+          );
+          setIsEventStarted(nowInEventTimezone >= eventDateTime);
+        }
+
         setLoading(false);
       } catch (err) {
         console.error("Error fetching event or join data:", err);
@@ -76,10 +85,6 @@ export default function EventCheckInPage() {
     fetchEventAndCheckIn();
   }, [id, user]);
 
-  const handleWalletConnect = (address) => {
-    setWalletAddress(address);
-  };
-
   const handleCheckIn = async () => {
     if (!user) {
       setCheckInStatus("❌ User not authenticated. Please sign in.");
@@ -89,24 +94,31 @@ export default function EventCheckInPage() {
       setCheckInStatus("❌ You haven’t joined this event.");
       return;
     }
+    if (!isEventStarted) {
+      setCheckInStatus("❌ Event has not started yet.");
+      return;
+    }
     if (hasCheckedIn) {
       setCheckInStatus("❌ You have already checked in.");
       return;
     }
-    if (!walletAddress) {
-      setCheckInStatus("❌ Please connect your wallet.");
-      return;
-    }
 
     try {
+      // Connect to the user's Cardano wallet to get their address
+      const wallet = await BrowserWallet.enable("nami");
+      const walletAddress = await wallet.getChangeAddress();
+
+      // Fetch the username from the user's Firestore document
       const userDocRef = doc(db, "users", user.uid);
       const userDocSnap = await getDoc(userDocRef);
       const username = userDocSnap.exists()
         ? userDocSnap.data().username || "Anonymous"
         : "Anonymous";
-      const attestation = `attestation-${user.uid}-${Date.now()}`; 
-      const eligible = !!(event.policyId && event.assetName);
-      const merkleTreeProof = "dummy-proof";
+
+      // Generate metadata
+      const attestation = `attestation-${user.uid}-${Date.now()}`; // Simplified attestation (e.g., a unique ID)
+      const eligible = !!(event.policyId && event.assetName); // Already computed in the original code
+      const merkleTreeProof = "dummy-proof"; // Placeholder for Merkle tree proof
 
       const metadata = {
         address: walletAddress,
@@ -116,12 +128,13 @@ export default function EventCheckInPage() {
         merkleTreeProof: merkleTreeProof,
       };
 
+      // Update the join document with check-in data and metadata
       const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
       const updateData = {
         checkedIn: true,
         checkInTimestamp: new Date().toISOString(),
         nftClaimEligible: eligible,
-        metadata: metadata,
+        metadata: metadata, // Store the metadata in the join document
       };
 
       await updateDoc(joinDocRef, updateData);
@@ -197,7 +210,7 @@ export default function EventCheckInPage() {
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-      }}
+        }}
     >
       <div className="absolute inset-0 bg-white/70 z-0"></div>
       <Navbar />
@@ -252,12 +265,10 @@ export default function EventCheckInPage() {
               </p>
             </div>
 
-            <ConnectWallet onConnect={handleWalletConnect} />
-
             <button
               onClick={handleCheckIn}
               className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2 mt-4"
-              disabled={hasCheckedIn || !hasJoined || !walletAddress}
+              disabled={hasCheckedIn || !hasJoined || !isEventStarted}
             >
               <FaCheckCircle />
               {hasCheckedIn ? "Already Checked In" : "Check In to Event"}

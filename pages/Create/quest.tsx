@@ -2,76 +2,110 @@ import { useState } from "react";
 import { BsCheck2Circle } from "react-icons/bs";
 import ConnectWallet from "@/components/button/ConnectWallet";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { initializeRewardPool } from "@/utils/handler";
+import { doc, setDoc } from "firebase/firestore";
+import { db, auth } from "@/config";
+import { useRouter } from "next/router";
+
+interface Task {
+  taskType: string;
+  link: string;
+  points: number;
+}
+
+interface FormState {
+  name: string;
+  description: string;
+  reward: string;
+  deadline: string;
+  tasks: Task[];
+  tokenPolicyId: string;
+  tokenName: string;
+}
 
 export default function CreateQuestPage() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     name: "",
     description: "",
     reward: "",
     deadline: "",
-    tasks: [], // Store the tasks in this array
+    tasks: [],
+    tokenPolicyId: "",
+    tokenName: "",
   });
-  const [walletAddress, setWalletAddress] = useState(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [walletApi, setWalletApi] = useState<any>(null);
+  const router = useRouter();
 
   const currentYear = new Date().getFullYear();
 
-  // Handle task input changes (like adding task points and links)
-  const handleTaskChange = (index, e) => {
+  const handleTaskChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const updatedTasks = [...form.tasks];
-    updatedTasks[index][e.target.name] = e.target.value;
+    const { name, value } = e.target;
+    updatedTasks[index][name] = name === "points" ? parseInt(value) || 0 : value;
     setForm({ ...form, tasks: updatedTasks });
   };
 
-  // Add a new task to the form
-  const addTask = (taskType) => {
+  const addTask = (taskType: string) => {
     setForm({
       ...form,
-      tasks: [
-        ...form.tasks,
-        { taskType, link: "", points: 1 }, // Default task with points = 1
-      ],
+      tasks: [...form.tasks, { taskType, link: "", points: 1 }],
     });
   };
 
-  // Remove a task from the form
-  const removeTask = (index) => {
+  const removeTask = (index: number) => {
     const updatedTasks = form.tasks.filter((_, i) => i !== index);
     setForm({ ...form, tasks: updatedTasks });
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async () => {
-    if (!walletAddress) {
-      return alert("Wallet not connected.");
+  // Initialize reward pool and store quest
+  const handleCreateQuest = async () => {
+    if (!walletAddress || !walletApi || !auth.currentUser) {
+      return alert("Wallet not connected or user not authenticated.");
+    }
+    if (!form.tokenPolicyId || !form.tokenName || !form.reward || !form.deadline) {
+      return alert("Please fill all fields (token policy ID, token name, reward, deadline).");
     }
 
     try {
       setLoading(true);
-      setStatus("Processing quest...");
+      setStatus("Initializing reward pool...");
 
-      const res = await fetch("/api/create-quest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          userAddress: walletAddress,
-        }),
-      });
+      const deadlineTimestamp = new Date(form.deadline).getTime();
+      const totalRewards = parseInt(form.reward) * 1_000_000;
 
-      const result = await res.json();
-      if (res.ok) {
-        setStatus(`✅ Quest Created! Quest ID: ${result.questId}`);
-      } else {
-        setStatus(`❌ Quest creation failed: ${result.error}`);
-      }
+      // Initialize reward pool on Cardano testnet
+      const { txHash, scriptAddress } = await initializeRewardPool(
+        walletApi,
+        totalRewards,
+        deadlineTimestamp,
+        form.tokenPolicyId,
+        form.tokenName
+      );
+
+      // Store quest in Firestore
+      const questData = {
+        ...form,
+        creator: walletAddress,
+        creatorUid: auth.currentUser.uid,
+        scriptAddress,
+        txHash,
+        createdAt: new Date().toISOString(),
+        status: "active",
+      };
+      await setDoc(doc(db, "quests", txHash), questData);
+
+      setStatus(`✅ Quest Created! Tx Hash: ${txHash}`);
+      router.push("/quests"); // Redirect to quests page
     } catch (err) {
       console.error(err);
-      setStatus("Something went wrong.");
+      setStatus(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -87,18 +121,20 @@ export default function CreateQuestPage() {
             animation: 'bg-scrolling-reverse 0.92s linear infinite',
           }}
         >
-          <div className="bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10 overflow-y-auto" style={{ maxHeight: "100vh" }}>
+          <div
+            className="bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10 overflow-y-auto"
+            style={{ maxHeight: "100vh" }}
+          >
             <div className="flex justify-between items-center">
               <img src="/img/logo.png" alt="logo" width={200} />
             </div>
 
             <div className="pt-16 pb-5">
               <h1 className="text-3xl font-extrabold">Create Quest</h1>
-              <p className="text-sm font-medium">Enter your quest details</p>
+              <p className="text-sm font-medium">Enter your quest and reward pool details</p>
             </div>
 
             <div className="space-y-4">
-              {/* Quest Form Inputs */}
               <div className="form-control">
                 <label className="label text-black">Quest Name</label>
                 <input
@@ -123,19 +159,44 @@ export default function CreateQuestPage() {
               </div>
 
               <div className="form-control">
-                <label className="label text-black">Reward</label>
+                <label className="label text-black">Total Reward (Tokens)</label>
+                <input
+                  type="number"
+                  name="reward"
+                  placeholder="Enter total token reward"
+                  value={form.reward}
+                  onChange={handleChange}
+                  className="input input-bordered w-full bg-transparent"
+                  min="0"
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label text-black">Token Policy ID</label>
                 <input
                   type="text"
-                  name="reward"
-                  placeholder="Enter quest reward"
-                  value={form.reward}
+                  name="tokenPolicyId"
+                  placeholder="Enter token policy ID"
+                  value={form.tokenPolicyId}
                   onChange={handleChange}
                   className="input input-bordered w-full bg-transparent"
                 />
               </div>
 
               <div className="form-control">
-                <label className="label text-black">Quest Deadline</label>
+                <label className="label text-black">Token Name</label>
+                <input
+                  type="text"
+                  name="tokenName"
+                  placeholder="Enter token name"
+                  value={form.tokenName}
+                  onChange={handleChange}
+                  className="input input-bordered w-full bg-transparent"
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label text-black">Claim Deadline</label>
                 <input
                   type="date"
                   name="deadline"
@@ -145,7 +206,6 @@ export default function CreateQuestPage() {
                 />
               </div>
 
-              {/* Task input fields */}
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold">Tasks</h3>
                 {form.tasks.map((task, index) => (
@@ -165,6 +225,7 @@ export default function CreateQuestPage() {
                       onChange={(e) => handleTaskChange(index, e)}
                       placeholder="Points"
                       className="input input-bordered w-1/4"
+                      min={0}
                     />
                     <button
                       className="btn btn-danger w-1/6"
@@ -174,6 +235,7 @@ export default function CreateQuestPage() {
                     </button>
                   </div>
                 ))}
+
                 <div className="flex gap-4">
                   <button
                     className="btn btn-primary"
@@ -183,39 +245,39 @@ export default function CreateQuestPage() {
                   </button>
                   <button
                     className="btn btn-primary"
-                    onClick={() => addTask("Follow Discord")}
-                  >
-                    Add Follow Discord Task
-                  </button>
-                  <button
-                    className="btn btn-primary"
                     onClick={() => addTask("Join Discord")}
                   >
                     Add Join Discord Task
                   </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => addTask("Retweet Tweet")}
+                  >
+                    Add Retweet Tweet Task
+                  </button>
                 </div>
               </div>
 
-              {/* Connect Wallet Button */}
               <ConnectWallet
-                onConnect={setWalletAddress}
-                onVerified={(address) => {
+                onConnect={(address: string, api: any) => {
+                  setWalletAddress(address);
+                  setWalletApi(api);
+                }}
+                onVerified={(address: string) => {
                   console.log("Wallet verified:", address);
                   setWalletAddress(address);
                 }}
               />
 
-              {/* Create Quest Button */}
               <button
                 className="btn w-full bg-black text-white hover:bg-gray-800"
-                onClick={handleSubmit}
+                onClick={handleCreateQuest}
                 disabled={loading}
               >
-                {loading ? "Creating..." : "Create Quest"}
+                {loading ? "Creating..." : "Create Quest & Reward Pool"}
                 <BsCheck2Circle className="text-lg ml-2" />
               </button>
 
-              {/* Status Messages */}
               {status && (
                 <div className="alert alert-info mt-2">
                   <span>{status}</span>
@@ -233,7 +295,8 @@ export default function CreateQuestPage() {
 
           <div className="bg-transparent text-center p-48">
             <h1 className="text-4xl font-semibold">
-              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
+              <span className="text-blue-800">Cardano Hub</span>{" "}
+              <span className="text-red-600">Indonesia</span>
             </h1>
             <DotLottieReact
               src="https://lottie.host/7b819196-d55f-494b-b0b1-c78b39656bfe/RD0XuFNO9P.lottie"
@@ -241,7 +304,9 @@ export default function CreateQuestPage() {
               autoplay
               style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
             />
-            <p className="text-lg font-medium">Complete social actions and earn rewards!</p>
+            <p className="text-lg font-medium">
+              Create quests and engage communities!
+            </p>
           </div>
         </div>
       </div>

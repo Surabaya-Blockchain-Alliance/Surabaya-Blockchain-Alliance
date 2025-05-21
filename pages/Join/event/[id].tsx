@@ -147,10 +147,17 @@ export default function EventDetailsPage() {
       setJoinStatus("⏳ Joining event...");
 
       const joinData = {
-        email: user.email || "",
-        username: userProfile.username || "",
-        walletAddress: walletAddress,
+        email: user.email || null,
+        username: userProfile.username || null,
+        walletAddress: walletAddress || null,
+        checkedIn: null,
+        checkInTimestamp: null,
+        nftClaimEligible: null,
+        metadata: null,
+        nftClaimed: null,
+        nftClaimTxHash: null,
       };
+
 
       await setDoc(doc(db, `nft-images/${id}/joined`, user.uid), joinData);
       setHasJoined(true);
@@ -276,7 +283,7 @@ export default function EventDetailsPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           <Link
             className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center hover:text-blue-600 transition-colors"
-            href="/events"
+            href="/join/Event"
           >
             <BsArrowLeft className="text-sm" />
             <span className={`font-semibold ${geistTeko.variable}`}>Back to Events</span>
