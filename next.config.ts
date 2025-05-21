@@ -5,13 +5,11 @@ const nextConfig = {
     ignoreBuildErrors: true, 
   },
   webpack: (config, options) => {
-    // Ensure WebAssembly is handled in both development and production
     config.experiments = {
       asyncWebAssembly: true,
       layers: true,
     };
 
-    // Fallback for Node.js modules that don't exist in the browser
     if (!options.isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -21,6 +19,20 @@ const nextConfig = {
     }
 
     return config;
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'sapphire-managing-narwhal-834.mypinata.cloud',
+        pathname: '/ipfs/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ipfs.io',
+        pathname: '/ipfs/**', 
+      },
+    ],
   },
 };
 

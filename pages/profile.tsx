@@ -4,6 +4,8 @@ import { signOut } from 'firebase/auth';
 import Link from 'next/link';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
+import Navbar from '@/components/navbar';
+import Footer from '@/components/footer';
 import EventCard from '@/components/card/events';
 import { auth } from '../config';
 
@@ -160,7 +162,13 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="py-3">
+            <div className="py-3 space-y-2">
+              <button
+                onClick={() => router.push('/setup')}
+                className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md"
+              >
+                Edit Profile
+              </button>
               <button
                 className="btn w-full bg-red-600 text-white hover:bg-red-700 shadow-xl rounded-md"
                 onClick={handleLogout}
@@ -168,18 +176,6 @@ export default function ProfilePage() {
                 Log Out
               </button>
             </div>
-
-            <footer className="footer bg-white text-black items-center sticky bottom-0 top-full mt-6">
-              <aside className="grid-flow-col items-center">
-                <LogoIcon size={24} />
-                <p>Copyright © {currentYear} - All rights reserved</p>
-              </aside>
-              <nav className="grid-flow-col gap-4 md:place-self-center md:justify-self-end">
-                <SocialIcon type="twitter" />
-                <SocialIcon type="discord" />
-                <SocialIcon type="telegram" />
-              </nav>
-            </footer>
           </div>
 
           <div className="h-screen w-full bg-white shadow-xl p-6">

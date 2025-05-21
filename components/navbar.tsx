@@ -3,7 +3,7 @@ import ButtonBase from "./button/base";
 import "@meshsdk/react/styles.css";
 import { MeshProvider } from "@meshsdk/react";
 import Link from "next/link";
-import { useRouter } from "next/router"; // Import useRouter
+import { useRouter } from "next/router";
 import LogoIcon from "./LogoIcon";
 import { BsArrowRight } from "react-icons/bs";
 
@@ -24,8 +24,8 @@ const menuItems: MenuItem[] = [
 
     ],
   },
-  { label: "Quests", href: "#" },
-  { label: "Events", href: "#" },
+  { label: "Quests", href: "Quest" },
+  { label: "Events", href: "/Event" },
   { label: "Partnerships", href: "#" },
 ];
 
