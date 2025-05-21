@@ -1,49 +1,19 @@
 import { useState, useEffect } from "react";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, auth } from "../../../config";
 import { Teko } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
-import { FaWallet } from "react-icons/fa";
+import { FaWallet, FaCheckCircle, FaGift } from "react-icons/fa";
 import { BsArrowLeft } from "react-icons/bs";
-import { BrowserWallet, Transaction, ForgeScript } from "@meshsdk/core";
-import { getAssetInfoFromTx, getAssetOwner } from "@/utils/indexing";
+import { BrowserWallet } from "@meshsdk/core";
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
   subsets: ["latin"],
 });
-
-const defaultPaymentRecipient =
-  process.env.PAYMENT_RECIPIENT_ADDRESS ||
-  "addr_test1qzf333svyuyxrt8aajhgjmews0737sf69uvn4xyt4ny2ent88fhr8q5eqrdqfhaqcu4fcd2hqfz6fw4h57jlgzfp6rlsvj37jm";
-const policyId = "a727399922a075addd9d2ea1b494feb2b774f721d988e48b92fa89d2";
-
-const stringToHex = (str) =>
-  [...str].map((c) => ("0" + c.charCodeAt(0).toString(16)).slice(-2)).join("");
-
-const validateMetadataLength = (metadata) => {
-  const checkLength = (value, field) => {
-    if (typeof value === "string" && Buffer.from(value).length > 64) {
-      throw new Error(
-        `Metadata field '${field}' is too long: ${value} (${Buffer.from(value).length} bytes, max 64)`
-      );
-    }
-  };
-  const traverse = (obj, path = "") => {
-    for (const [key, value] of Object.entries(obj)) {
-      const newPath = path ? `${path}.${key}` : key;
-      if (typeof value === "string") {
-        checkLength(value, newPath);
-      } else if (typeof value === "object" && value !== null) {
-        traverse(value, newPath);
-      }
-    }
-  };
-  traverse(metadata);
-};
 
 const isValidCardanoAddress = (address) => {
   return typeof address === "string" && (address.startsWith("addr1") || address.startsWith("addr_test1"));
@@ -61,6 +31,7 @@ export default function EventDetailsPage() {
   const [joinLoading, setJoinLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState({ username: "", walletAddress: "" });
+  const [hasJoined, setHasJoined] = useState(false);
   const router = useRouter();
   const { id } = router.query;
 
@@ -71,14 +42,13 @@ export default function EventDetailsPage() {
         router.push("/signin");
       }
     });
-
     return () => unsubscribe();
   }, [id, router]);
 
   useEffect(() => {
     if (!id) return;
 
-    const fetchEvent = async () => {
+    const fetchEventAndJoinStatus = async () => {
       try {
         const docRef = doc(db, "nft-images", id);
         const docSnap = await getDoc(docRef);
@@ -87,6 +57,13 @@ export default function EventDetailsPage() {
         } else {
           setError("Event not found.");
         }
+
+        if (user) {
+          const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
+          const joinDocSnap = await getDoc(joinDocRef);
+          setHasJoined(joinDocSnap.exists());
+        }
+
         setLoading(false);
       } catch (err) {
         console.error("Error fetching event:", err);
@@ -94,15 +71,14 @@ export default function EventDetailsPage() {
         setLoading(false);
       }
     };
-    fetchEvent();
-  }, [id]);
+    fetchEventAndJoinStatus();
+  }, [id, user]);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchUserProfileAndWallets = async () => {
       try {
-        // Fetch user profile
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
@@ -112,18 +88,16 @@ export default function EventDetailsPage() {
             walletAddress: userData.walletAddress || "",
           });
         } else {
-          setJoinStatus("❌ User profile not found. Please set up your profile.");
+          setJoinStatus("❌ User profile not found. Please set up your profile at /profile.");
         }
-
-        // Fetch available wallets
         const availableWallets = await BrowserWallet.getAvailableWallets();
         setWallets(availableWallets);
         if (availableWallets.length === 0) {
-          setJoinStatus("❌ No Cardano wallets found. Please install a wallet like Nami or Eternl.");
+          setJoinStatus("❌ No Cardano wallets found. Please install a wallet like Nami or Eternl from your browser store.");
         }
       } catch (error) {
         console.error("Error fetching user profile or wallets:", error);
-        setJoinStatus("❌ Failed to fetch user profile or wallets.");
+        setJoinStatus("❌ Failed to fetch user profile or wallets. Please try again.");
       }
     };
     fetchUserProfileAndWallets();
@@ -134,6 +108,9 @@ export default function EventDetailsPage() {
     try {
       const selectedWallet = await BrowserWallet.enable(walletId);
       const address = await selectedWallet.getChangeAddress();
+      if (!isValidCardanoAddress(address)) {
+        throw new Error("Invalid Cardano wallet address.");
+      }
       setWallet(selectedWallet);
       setWalletAddress(address);
       setJoinStatus("✅ Wallet connected.");
@@ -149,111 +126,42 @@ export default function EventDetailsPage() {
       return;
     }
     if (!wallet || !walletAddress) {
-      setJoinStatus("❌ Wallet not connected.");
+      setJoinStatus("❌ Wallet not connected. Please connect a Cardano wallet.");
+      return;
+    }
+    if (!isValidCardanoAddress(walletAddress)) {
+      setJoinStatus("❌ Invalid wallet address. Please reconnect a valid Cardano wallet.");
       return;
     }
     if (!event) {
-      setJoinStatus("❌ Event data not loaded.");
+      setJoinStatus("❌ Event data not loaded. Please try again.");
       return;
     }
-    if (!userProfile.username || !userProfile.walletAddress) {
-      setJoinStatus("❌ Profile incomplete. Please set up your username and wallet address.");
+    if (hasJoined) {
+      setJoinStatus("✅ You have already joined this event.");
       return;
     }
 
     try {
       setJoinLoading(true);
-      setJoinStatus("⏳ Preparing transaction...");
-
-      const recipientAddress = event.creatorAddress && isValidCardanoAddress(event.creatorAddress)
-        ? event.creatorAddress
-        : defaultPaymentRecipient;
-
-      const idToken = await user.getIdToken();
-      const balance = await wallet.getBalance();
-      const lovelace = balance.find((asset) => asset.unit === "lovelace")?.quantity || "0";
-      if (parseInt(lovelace) < 10_000_000) {
-        throw new Error("Insufficient balance. You need at least 10 ADA to join the event.");
-      }
-      const usedAddresses = await wallet.getUsedAddresses();
-      const address = usedAddresses[0] || walletAddress;
-      const assetName = stringToHex(event.assetName || `EventNFT-${Date.now()}`);
-      const metadata = {
-        721: {
-          [policyId]: {
-            [assetName]: {
-              name: event.title.slice(0, 64) || "Event NFT",
-              description: event.description.slice(0, 64) || "An event NFT on Cardano",
-              image: event.cid.slice(0, 64),
-              mediaType: "image/jpeg",
-              creator: user.uid,
-              eventDateTime: event.time,
-              meetLink: event.link.slice(0, 64) || "",
-              timezone: event.timezone || "UTC",
-              tags: event.tags
-                ? event.tags.map((tag) => tag.trim().slice(0, 64)).slice(0, 10)
-                : ["event", "NFT", "cardano"],
-            },
-          },
-        },
-      };
-
-      validateMetadataLength(metadata);
-      const tx = new Transaction({ initiator: wallet });
-      tx.mintAsset(ForgeScript.withOneSignature(walletAddress), {
-        assetName,
-        assetQuantity: "1",
-        metadata,
-        label: "721",
-        recipient: address,
-      });
-      const unsignedTx = await tx.build();
-      const signedTx = await wallet.signTx(unsignedTx);
-      const txHash = await wallet.submitTx(signedTx);
-
-      await new Promise((resolve) => setTimeout(resolve, 30000));
-
-      const assetInfos = await getAssetInfoFromTx(txHash);
-      if (!assetInfos || assetInfos.length === 0) {
-        throw new Error("Unable to retrieve asset info from transaction.");
-      }
-
-      const asset = assetInfos[0];
-      const assetOwner = await getAssetOwner(`${asset.policyId}${Buffer.from(asset.assetName).toString("hex")}`);
-      if (!assetOwner) {
-        throw new Error("Unable to retrieve asset fingerprint.");
-      }
+      setJoinStatus("⏳ Joining event...");
 
       const joinData = {
-        userId: user.uid,
-        email: user.email,
-        username: userProfile.username,
-        walletAddress: userProfile.walletAddress,
-        txHash,
-        assetUnit: assetOwner.asset,
-        timestamp: new Date().toISOString(),
-        recipientAddress,
+        email: user.email || "",
+        username: userProfile.username || "",
+        walletAddress: walletAddress,
       };
-      await setDoc(doc(db, `nft-images/${id}/joined`, user.uid), joinData);
 
-      const txLink = `https://preview.cexplorer.io/tx/${txHash}`;
-      const shortTxHash = `${txHash.slice(0, 6)}...${txHash.slice(-4)}`;
-      setJoinStatus(
-        <>
-          ✅ Successfully joined event! <span className="font-mono">{shortTxHash}</span>{" "}
-          <a
-            href={txLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
-          >
-            View Transaction
-          </a>
-        </>
-      );
+      await setDoc(doc(db, `nft-images/${id}/joined`, user.uid), joinData);
+      setHasJoined(true);
+      setJoinStatus("✅ Successfully joined event!");
     } catch (error) {
       console.error("Join error:", error);
-      setJoinStatus(`❌ Error: ${error.message}`);
+      if (error.code === "permission-denied") {
+        setJoinStatus("❌ Permission denied. Please ensure your wallet is connected and try again.");
+      } else {
+        setJoinStatus(`❌ Error: ${error.message}`);
+      }
     } finally {
       setJoinLoading(false);
     }
@@ -407,22 +315,6 @@ export default function EventDetailsPage() {
                 </p>
               </div>
               <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">CID:</p>
-                <p className="text-gray-600">{event.cid}</p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Asset Name:</p>
-                <p className="text-gray-600">{event.assetName}</p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Policy ID:</p>
-                <p className="text-gray-600">{event.policyId}</p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Event ID:</p>
-                <p className="text-gray-600">{event.id}</p>
-              </div>
-              <div className="flex justify-between">
                 <p className="font-semibold text-gray-800">Created At:</p>
                 <p className="text-gray-600">
                   {new Date(event.timestamp).toLocaleString("en-US", {
@@ -434,8 +326,8 @@ export default function EventDetailsPage() {
               <div className="flex justify-between">
                 <p className="font-semibold text-gray-800">Creator Address:</p>
                 <p className="text-gray-600">
-                  {event.creatorAddress
-                    ? `${event.creatorAddress.slice(0, 6)}...${event.creatorAddress.slice(-4)}`
+                  {event.address
+                    ? `${event.address.slice(0, 6)}...${event.address.slice(-4)}`
                     : "Not provided"}
                 </p>
               </div>
@@ -444,7 +336,7 @@ export default function EventDetailsPage() {
             <button
               onClick={() => setShowWalletModal(true)}
               className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2 mt-4"
-              disabled={joinLoading}
+              disabled={joinLoading || hasJoined}
             >
               <FaWallet />
               {walletAddress
@@ -456,14 +348,39 @@ export default function EventDetailsPage() {
               <button
                 onClick={handleJoinEvent}
                 className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2 mt-2"
-                disabled={joinLoading || !event.creatorAddress}
+                disabled={joinLoading || hasJoined}
               >
-                {joinLoading ? "Joining..." : "Join Event (Mint NFT - 10 ADA)"}
+                {joinLoading ? "Joining..." : hasJoined ? "Joined Event" : "Join Event"}
               </button>
             )}
 
+            {hasJoined && (
+              <div className="space-y-2 mt-4">
+                <Link
+                  href={`/Join/event/${id}/check-in`}
+                  className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2"
+                >
+                  <FaCheckCircle />
+                  Go to Check-In
+                </Link>
+                {event.policyId && event.assetName && (
+                  <Link
+                    href={`/Join/event/${id}/claim`}
+                    className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2"
+                  >
+                    <FaGift />
+                    Claim NFT
+                  </Link>
+                )}
+              </div>
+            )}
+
             {joinStatus && (
-              <div className={`alert mt-2 p-4 rounded-lg ${joinStatus.startsWith("✅") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              <div
+                className={`alert mt-2 p-4 rounded-lg ${
+                  joinStatus.startsWith("✅") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                }`}
+              >
                 <span>{joinStatus}</span>
               </div>
             )}
@@ -476,19 +393,25 @@ export default function EventDetailsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg shadow-xl text-center space-y-4 max-w-md w-full">
             <h2 className="text-xl font-bold">Select a Wallet</h2>
-            {wallets.map((wallet) => (
-              <button
-                key={wallet.id}
-                className="w-full py-2 border border-black text-black hover:bg-black hover:text-white rounded-md mb-2 flex items-center gap-2 justify-center"
-                onClick={() => handleWalletSelect(wallet.id)}
-                disabled={joinLoading}
-              >
-                {wallet.icon && (
-                  <img src={wallet.icon} alt={wallet.name} className="w-5 h-5 rounded-sm" />
-                )}
-                {wallet.name}
-              </button>
-            ))}
+            {wallets.length === 0 ? (
+              <p className="text-red-700">
+                No wallets found. Please install a Cardano wallet like Nami or Eternl.
+              </p>
+            ) : (
+              wallets.map((wallet) => (
+                <button
+                  key={wallet.id}
+                  className="w-full py-2 border border-black text-black hover:bg-black hover:text-white rounded-md mb-2 flex items-center gap-2 justify-center"
+                  onClick={() => handleWalletSelect(wallet.id)}
+                  disabled={joinLoading}
+                >
+                  {wallet.icon && (
+                    <img src={wallet.icon} alt={wallet.name} className="w-5 h-5 rounded-sm" />
+                  )}
+                  {wallet.name}
+                </button>
+              ))
+            )}
             <button
               onClick={() => setShowWalletModal(false)}
               className="text-sm text-gray-500 hover:underline"

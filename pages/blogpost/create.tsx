@@ -8,10 +8,8 @@ import Navbar from '@/components/navbar';
 import { uploadFile } from '@/utils/upload';
 import 'easymde/dist/easymde.min.css';
 
-// Dynamically import SimpleMDE with SSR disabled
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
 
-// Simple Markdown-to-JSON parser
 const markdownToJson = (markdown: string): Array<{ type: string; level?: number; content?: string; src?: string; alt?: string }> => {
   const blocks: Array<{ type: string; level?: number; content?: string; src?: string; alt?: string }> = [];
   const lines = markdown.split('\n').filter((line) => line.trim());
@@ -99,7 +97,6 @@ export default function CreateBlog() {
         if (url && editorRef.current) {
           const imageMarkdown = `![Image](${url})`;
           setMarkdown((prev) => prev + '\n' + imageMarkdown);
-          // Restore editor focus
           editorRef.current.codemirror.focus();
         }
       }

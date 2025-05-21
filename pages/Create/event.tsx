@@ -223,7 +223,7 @@ export default function MintNFTPage() {
             [assetName]: {
               name: form.name.slice(0, 64) || "Event NFT",
               description: form.description.slice(0, 64) || "An event NFT on Cardano",
-              image: uploadInfo.cid.slice(0, 64), // Raw CID for on-chain
+              image: uploadInfo.cid.slice(0, 64),
               mediaType: "image/jpeg",
               creator: user.uid,
               eventDateTime,
@@ -263,9 +263,7 @@ export default function MintNFTPage() {
       if (!assetOwner) {
         throw new Error("Unable to retrieve asset fingerprint.");
       }
-
-      // Store specified fields in Firestore with unique ID
-      const eventId = uuidv4(); // Generate unique ID
+      const eventId = uuidv4(); 
       const nftData = {
         id: eventId,
         creator: address,
@@ -281,7 +279,7 @@ export default function MintNFTPage() {
         policyId: asset.policyId,
       };
 
-      await setDoc(doc(db, "nft-images", eventId), nftData); // Use eventId as document ID
+      await setDoc(doc(db, "nft-images", eventId), nftData); 
       const txLink = `https://preview.cexplorer.io/tx/${txHash}`;
       const shortTxHash = `${txHash.slice(0, 6)}...${txHash.slice(-4)}`;
       setStatus(
@@ -313,8 +311,6 @@ export default function MintNFTPage() {
         </div>
       );
     }
-
-    // Use Pinata gateway for image preview
     let src = imageUrl;
     if (imageUrl.startsWith("ipfs://")) {
       src = `https://sapphire-managing-narwhal-834.mypinata.cloud/ipfs/${imageUrl.replace("ipfs://", "")}`;
@@ -384,7 +380,7 @@ export default function MintNFTPage() {
             <span className="text-green-500">Event NFT</span>
           </h1>
           <p className="text-gray-600 font-medium text-lg">
-            Create and mint NFTs for your events for a fee of 10 ADA.
+            Create Event NFTs for your events for a fee of 10 ADA.
           </p>
 
           <div className="space-y-4 text-left">

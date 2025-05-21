@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db, auth } from "../../../../../config";
+import { db, auth } from "../../../../config";
 import { Teko } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
-import { BsArrowLeft, FaCheckCircle } from "react-icons/bs";
+import { BsArrowLeft } from "react-icons/bs";
+import { FaCheckCircle } from "react-icons/fa"
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
@@ -42,7 +43,6 @@ export default function EventCheckInPage() {
 
     const fetchEventAndCheckIn = async () => {
       try {
-        // Fetch event details
         const docRef = doc(db, "nft-images", id);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
@@ -53,8 +53,6 @@ export default function EventCheckInPage() {
 
         const eventData = { id: docSnap.id, ...docSnap.data() };
         setEvent(eventData);
-
-        // Check if user has joined
         const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
         const joinDocSnap = await getDoc(joinDocRef);
         if (joinDocSnap.exists()) {
@@ -64,8 +62,6 @@ export default function EventCheckInPage() {
         } else {
           setHasJoined(false);
         }
-
-        // Check if event has started
         if (eventData.time && eventData.timezone) {
           const eventDateTime = new Date(eventData.time);
           const now = new Date();
@@ -105,12 +101,18 @@ export default function EventCheckInPage() {
 
     try {
       const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
-      await updateDoc(joinDocRef, {
+      const updateData = {
         checkedIn: true,
         checkInTimestamp: new Date().toISOString(),
-      });
+        nftClaimEligible: !!(event.policyId && event.assetName),
+      };
+      await updateDoc(joinDocRef, updateData);
       setHasCheckedIn(true);
-      setCheckInStatus("✅ Successfully checked in!");
+      setCheckInStatus(
+        event.policyId && event.assetName
+          ? "✅ Successfully checked in! You are now eligible to claim your NFT."
+          : "✅ Successfully checked in!"
+      );
     } catch (error) {
       console.error("Check-in error:", error);
       setCheckInStatus(`❌ Error: ${error.message}`);
@@ -185,7 +187,7 @@ export default function EventCheckInPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           <Link
             className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center hover:text-blue-600 transition-colors"
-            href={`/Join/events/${id}`}
+            href={`/events/${id}`}
           >
             <BsArrowLeft className="text-sm" />
             <span className={`font-semibold ${geistTeko.variable}`}>Back to Event</span>
@@ -241,14 +243,18 @@ export default function EventCheckInPage() {
             </button>
 
             {checkInStatus && (
-              <div className={`alert mt-2 p-4 rounded-lg ${checkInStatus.startsWith("✅") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              <div
+                className={`alert mt-2 p-4 rounded-lg ${
+                  checkInStatus.startsWith("✅") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                }`}
+              >
                 <span>{checkInStatus}</span>
               </div>
             )}
 
             {!hasJoined && (
               <div className="alert bg-yellow-100 text-yellow-700 p-4 rounded-lg mt-2">
-                <span>You must join the event by minting an NFT before checking in.</span>
+                <span>You must join the event before checking in.</span>
               </div>
             )}
 

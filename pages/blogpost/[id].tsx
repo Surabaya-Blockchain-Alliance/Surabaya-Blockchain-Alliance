@@ -57,7 +57,6 @@ export default function BlogPost() {
   const router = useRouter();
   const { id } = router.query;
 
-  // Fetch post and comments, and check user authentication
   useEffect(() => {
     const fetchPostAndComments = async () => {
       if (!id) return;
@@ -77,8 +76,8 @@ export default function BlogPost() {
         const commentsData = commentsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          likes: doc.data().likes || 0, // Ensure likes default
-          likedBy: doc.data().likedBy || [], // Ensure likedBy default
+          likes: doc.data().likes || 0,
+          likedBy: doc.data().likedBy || [],
         }));
         setComments(commentsData);
       } catch (error) {
@@ -107,7 +106,6 @@ export default function BlogPost() {
     return () => unsubscribe();
   }, [id]);
 
-  // Handle like/unlike button click for post
   const handleLike = async () => {
     if (!user) {
       setError('You must be logged in to like this post.');
@@ -146,7 +144,6 @@ export default function BlogPost() {
     }
   };
 
-  // Handle like/unlike button click for comments
   const handleCommentLike = async (commentId) => {
     if (!user) {
       setError('You must be logged in to like this comment.');
@@ -198,7 +195,6 @@ export default function BlogPost() {
     }
   };
 
-  // Handle comment submission (create or update)
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
 
@@ -259,14 +255,12 @@ export default function BlogPost() {
     }
   };
 
-  // Handle edit comment
   const handleEditComment = (commentId, content) => {
     setEditingCommentId(commentId);
     setComment(content);
     setError('');
   };
 
-  // Handle delete comment
   const handleDeleteComment = async (commentId) => {
     if (!user) {
       setError('You must be logged in to delete a comment.');
