@@ -1,5 +1,3 @@
-import type { Config } from "tailwindcss";
-
 export default {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -14,7 +12,22 @@ export default {
       },
     },
   },
-  plugins: [
-    require('daisyui')
-  ],
-} satisfies Config;
+  daisyui: {
+    themes: [
+      {
+        mytheme: {
+          primary: "#2563eb",
+          secondary: "#4b5563",
+          accent: "#facc15",
+          neutral: "#1f2937",
+          "base-100": "#ffffff",
+          info: "#38bdf8",
+          success: "#15803d",
+          warning: "#fb923c",
+          error: "#b91c1c",
+        },
+      },
+    ],
+  },
+  plugins: [require("daisyui")],
+};

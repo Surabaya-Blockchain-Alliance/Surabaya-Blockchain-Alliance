@@ -26,7 +26,7 @@ const menuItems: MenuItem[] = [
   },
   { label: "Quests", href: "Quest" },
   { label: "Events", href: "/Event" },
-  { label: "Partnerships", href: "#" },
+  { label: "Partnerships", href: "#/" },
 ];
 
 const Navbar: React.FC = () => {

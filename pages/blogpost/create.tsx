@@ -139,12 +139,13 @@ export default function CreateBlog() {
         likes: 0,
         author,
         postNumber: newId,
+        likedBy: [],
       });
 
       router.push('/');
     } catch (error) {
       console.error('Error creating post:', error);
-      alert('Post creation failed.');
+      alert('Post creation failed: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }

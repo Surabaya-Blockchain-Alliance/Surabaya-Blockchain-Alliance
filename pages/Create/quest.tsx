@@ -9,7 +9,7 @@ export default function CreateQuestPage() {
     description: "",
     reward: "",
     deadline: "",
-    tasks: [], // Store the tasks in this array
+    tasks: [],
   });
   const [walletAddress, setWalletAddress] = useState(null);
   const [status, setStatus] = useState("");
@@ -17,25 +17,20 @@ export default function CreateQuestPage() {
 
   const currentYear = new Date().getFullYear();
 
-  // Handle task input changes (like adding task points and links)
   const handleTaskChange = (index, e) => {
     const updatedTasks = [...form.tasks];
-    updatedTasks[index][e.target.name] = e.target.value;
+    const { name, value } = e.target;
+    updatedTasks[index][name] = name === "points" ? parseInt(value) || 0 : value;
     setForm({ ...form, tasks: updatedTasks });
   };
 
-  // Add a new task to the form
   const addTask = (taskType) => {
     setForm({
       ...form,
-      tasks: [
-        ...form.tasks,
-        { taskType, link: "", points: 1 }, // Default task with points = 1
-      ],
+      tasks: [...form.tasks, { taskType, link: "", points: 1 }],
     });
   };
 
-  // Remove a task from the form
   const removeTask = (index) => {
     const updatedTasks = form.tasks.filter((_, i) => i !== index);
     setForm({ ...form, tasks: updatedTasks });
@@ -54,12 +49,18 @@ export default function CreateQuestPage() {
       setLoading(true);
       setStatus("Processing quest...");
 
+      const pointsCollected = form.tasks.reduce(
+        (total, task) => total + (parseInt(task.points) || 0),
+        0
+      );
+
       const res = await fetch("/api/create-quest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
           userAddress: walletAddress,
+          pointsCollected,
         }),
       });
 
@@ -87,7 +88,10 @@ export default function CreateQuestPage() {
             animation: 'bg-scrolling-reverse 0.92s linear infinite',
           }}
         >
-          <div className="bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10 overflow-y-auto" style={{ maxHeight: "100vh" }}>
+          <div
+            className="bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10 overflow-y-auto"
+            style={{ maxHeight: "100vh" }}
+          >
             <div className="flex justify-between items-center">
               <img src="/img/logo.png" alt="logo" width={200} />
             </div>
@@ -98,7 +102,6 @@ export default function CreateQuestPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Quest Form Inputs */}
               <div className="form-control">
                 <label className="label text-black">Quest Name</label>
                 <input
@@ -145,11 +148,13 @@ export default function CreateQuestPage() {
                 />
               </div>
 
-              {/* Task input fields */}
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold">Tasks</h3>
                 {form.tasks.map((task, index) => (
-                  <div key={index} className="form-control flex items-center gap-4">
+                  <div
+                    key={index}
+                    className="form-control flex items-center gap-4"
+                  >
                     <input
                       type="text"
                       name="link"
@@ -165,6 +170,7 @@ export default function CreateQuestPage() {
                       onChange={(e) => handleTaskChange(index, e)}
                       placeholder="Points"
                       className="input input-bordered w-1/4"
+                      min={0}
                     />
                     <button
                       className="btn btn-danger w-1/6"
@@ -174,6 +180,7 @@ export default function CreateQuestPage() {
                     </button>
                   </div>
                 ))}
+
                 <div className="flex gap-4">
                   <button
                     className="btn btn-primary"
@@ -196,7 +203,6 @@ export default function CreateQuestPage() {
                 </div>
               </div>
 
-              {/* Connect Wallet Button */}
               <ConnectWallet
                 onConnect={setWalletAddress}
                 onVerified={(address) => {
@@ -205,7 +211,6 @@ export default function CreateQuestPage() {
                 }}
               />
 
-              {/* Create Quest Button */}
               <button
                 className="btn w-full bg-black text-white hover:bg-gray-800"
                 onClick={handleSubmit}
@@ -215,7 +220,6 @@ export default function CreateQuestPage() {
                 <BsCheck2Circle className="text-lg ml-2" />
               </button>
 
-              {/* Status Messages */}
               {status && (
                 <div className="alert alert-info mt-2">
                   <span>{status}</span>
@@ -233,7 +237,8 @@ export default function CreateQuestPage() {
 
           <div className="bg-transparent text-center p-48">
             <h1 className="text-4xl font-semibold">
-              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
+              <span className="text-blue-800">Cardano Hub</span>{" "}
+              <span className="text-red-600">Indonesia</span>
             </h1>
             <DotLottieReact
               src="https://lottie.host/7b819196-d55f-494b-b0b1-c78b39656bfe/RD0XuFNO9P.lottie"
@@ -241,7 +246,9 @@ export default function CreateQuestPage() {
               autoplay
               style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
             />
-            <p className="text-lg font-medium">Complete social actions and earn rewards!</p>
+            <p className="text-lg font-medium">
+              Complete social actions and earn rewards!
+            </p>
           </div>
         </div>
       </div>
