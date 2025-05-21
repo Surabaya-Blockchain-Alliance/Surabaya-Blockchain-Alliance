@@ -121,23 +121,28 @@ export default function EventDetailsPage() {
   };
 
   const handleJoinEvent = async () => {
-    if (!user) {
-      setJoinStatus("❌ User not authenticated. Please sign in.");
+    if (!user || !auth.currentUser || user.uid !== auth.currentUser.uid) {
+      console.error("Authentication error: User not authenticated or UID mismatch", { user, currentUser: auth.currentUser });
+      setJoinStatus("❌ User not authenticated. Please sign in again.");
       return;
     }
     if (!wallet || !walletAddress) {
+      console.error("Wallet error: No wallet or wallet address", { wallet, walletAddress });
       setJoinStatus("❌ Wallet not connected. Please connect a Cardano wallet.");
       return;
     }
     if (!isValidCardanoAddress(walletAddress)) {
+      console.error("Wallet error: Invalid Cardano address", { walletAddress });
       setJoinStatus("❌ Invalid wallet address. Please reconnect a valid Cardano wallet.");
       return;
     }
     if (!event) {
+      console.error("Event error: Event data not loaded", { event });
       setJoinStatus("❌ Event data not loaded. Please try again.");
       return;
     }
     if (hasJoined) {
+      console.log("Join status: Already joined", { userId: user.uid, eventId: id });
       setJoinStatus("✅ You have already joined this event.");
       return;
     }
@@ -148,24 +153,38 @@ export default function EventDetailsPage() {
 
       const joinData = {
         email: user.email || null,
-        username: userProfile.username || null,
-        walletAddress: walletAddress || null,
+        username: userProfile.username && userProfile.username !== "" ? userProfile.username : null,
+        walletAddress: walletAddress,
         checkedIn: null,
         checkInTimestamp: null,
         nftClaimEligible: null,
-        metadata: null,
+        metadata: {
+          address: walletAddress,
+          username: userProfile.username && userProfile.username !== "" ? userProfile.username : null,
+          attestation: "default-attestation",
+          eligible: false,
+          merkleTreeProof: "default-proof",
+        },
         nftClaimed: null,
         nftClaimTxHash: null,
       };
 
+      console.log("Attempting to join event with data:", JSON.stringify(joinData, null, 2));
 
-      await setDoc(doc(db, `nft-images/${id}/joined`, user.uid), joinData);
+      const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
+      await setDoc(joinDocRef, joinData);
       setHasJoined(true);
       setJoinStatus("✅ Successfully joined event!");
     } catch (error) {
-      console.error("Join error:", error);
+      console.error("Join error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        eventId: id,
+        userId: user.uid,
+      });
       if (error.code === "permission-denied") {
-        setJoinStatus("❌ Permission denied. Please ensure your wallet is connected and try again.");
+        setJoinStatus("❌ Permission denied. Please ensure your wallet is connected and your profile is set up correctly.");
       } else {
         setJoinStatus(`❌ Error: ${error.message}`);
       }
