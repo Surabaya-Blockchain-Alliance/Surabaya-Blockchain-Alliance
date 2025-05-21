@@ -4,6 +4,8 @@ import { signOut } from 'firebase/auth';
 import Link from 'next/link';
 import LogoIcon from '@/components/LogoIcon';
 import SocialIcon from '@/components/SocialIcon';
+import Navbar from '@/components/navbar';
+import Footer from '@/components/footer';
 import EventCard from '@/components/card/events';
 import { auth } from '../config';
 

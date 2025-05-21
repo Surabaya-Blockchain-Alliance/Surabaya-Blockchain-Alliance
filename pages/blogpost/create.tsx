@@ -1,74 +1,109 @@
-import { useEffect, useState } from 'react';
-import { db, auth, storage } from '../../config';
+import { useEffect, useState, useRef } from 'react';
+import { db, auth } from '../../config';
 import { collection, getDocs, getDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import Footer from "@/components/footer";
-import Navbar from "@/components/navbar";
+import Footer from '@/components/footer';
+import Navbar from '@/components/navbar';
+import { uploadFile } from '@/utils/upload';
 import 'easymde/dist/easymde.min.css';
 
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
 
+const markdownToJson = (markdown: string): Array<{ type: string; level?: number; content?: string; src?: string; alt?: string }> => {
+  const blocks: Array<{ type: string; level?: number; content?: string; src?: string; alt?: string }> = [];
+  const lines = markdown.split('\n').filter((line) => line.trim());
+
+  let currentBlock: { type: string; level?: number; content?: string; src?: string; alt?: string } | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith('# ')) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = { type: 'heading', level: 1, content: line.replace('# ', '').trim() };
+    } else if (line.startsWith('## ')) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = { type: 'heading', level: 2, content: line.replace('## ', '').trim() };
+    } else if (line.startsWith('### ')) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = { type: 'heading', level: 3, content: line.replace('### ', '').trim() };
+    } else if (line.match(/!\[.*?\]\((.*?)\)/)) {
+      if (currentBlock) blocks.push(currentBlock);
+      const match = line.match(/!\[.*?\]\((.*?)\)/);
+      currentBlock = { type: 'image', src: match![1], alt: '' };
+    } else if (line.trim()) {
+      if (currentBlock && currentBlock.type === 'paragraph') {
+        currentBlock.content += ' ' + line.trim();
+      } else {
+        if (currentBlock) blocks.push(currentBlock);
+        currentBlock = { type: 'paragraph', content: line.trim() };
+      }
+    }
+  }
+
+  if (currentBlock) blocks.push(currentBlock);
+  return blocks;
+};
+
 export default function CreateBlog() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [title, setTitle] = useState('');
   const [markdown, setMarkdown] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const editorRef = useRef<any>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser); 
+        setUser(firebaseUser);
+      } else {
+        router.push('/signin');
       }
-      setCheckingAuth(false); 
+      setCheckingAuth(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
-  const handleImageUpload = async (file) => {
+  const handleImageUpload = async (file: File): Promise<string | null> => {
     if (!user) {
       alert('You must be logged in to upload images.');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB.');
-      return;
+      return null;
     }
 
     setLoading(true);
     try {
-      const storageRef = ref(storage, `blog-images/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const imageUrl = await getDownloadURL(storageRef);
-      const imageMarkdown = `![image](${imageUrl})`;
-      setMarkdown((prev) => prev + '\n' + imageMarkdown);
+      const { gatewayUrl } = await uploadFile(file);
+      return gatewayUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Image upload failed.');
+      alert('Image upload failed: ' + (error as Error).message);
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const triggerFileUpload = (editor) => {
+  const triggerFileUpload = async () => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
     input.setAttribute('accept', 'image/*');
     input.click();
-    input.onchange = (e) => {
-      const file = e.target.files[0];
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        handleImageUpload(file);
+        const url = await handleImageUpload(file);
+        if (url && editorRef.current) {
+          const imageMarkdown = `![Image](${url})`;
+          setMarkdown((prev) => prev + '\n' + imageMarkdown);
+          editorRef.current.codemirror.focus();
+        }
       }
     };
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim() || !markdown.trim()) {
@@ -83,27 +118,29 @@ export default function CreateBlog() {
         const userDocRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
         if (userSnap.exists()) {
-          const userData = userSnap.data();
-          author = userData.username || 'Anonymous';
+          author = userSnap.data().username || 'Anonymous';
         }
       }
+
       const postsRef = collection(db, 'blogposts');
       const postsSnap = await getDocs(postsRef);
-
       let newId = 1;
       if (!postsSnap.empty) {
-        const allPosts = postsSnap.docs.map(doc => doc.data());
-        newId = Math.max(...allPosts.map(post => post.postNumber)) + 1;
+        const allPosts = postsSnap.docs.map((doc) => doc.data());
+        newId = Math.max(...allPosts.map((post) => post.postNumber || 0)) + 1;
       }
+
+      const jsonContent = markdownToJson(markdown);
       const blogPostRef = doc(db, 'blogposts', newId.toString());
       await setDoc(blogPostRef, {
         title,
-        content: markdown,
+        content: jsonContent,
         createdAt: serverTimestamp(),
         likes: 0,
         author,
-        postNumber: newId, 
+        postNumber: newId,
       });
+
       router.push('/');
     } catch (error) {
       console.error('Error creating post:', error);
@@ -114,63 +151,72 @@ export default function CreateBlog() {
   };
 
   if (checkingAuth) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-gray-100">Loading...</div>;
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-cover bg-fixed" 
-         style={{
-           backgroundImage: `url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC')` }}>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Navbar />
-      <div className="container mx-auto px-4 py-10 max-w-5xl bg-white shadow-xl rounded-lg opacity-90">
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full text-5xl text-black font-bold mb-6 focus:outline-none placeholder-black bg-white"
-            required
-          />
-
-          <SimpleMDE
-            value={markdown}
-            onChange={setMarkdown}
-            options={{
-              placeholder: 'Write your post in markdown...',
-              spellChecker: false,
-              minHeight: '400px',
-              status: false,
-              toolbar: [
-                'bold',
-                'italic',
-                'heading',
-                '|',
-                'quote',
-                'code',
-                '|',
-                'unordered-list',
-                'ordered-list',
-                '|',
-                'link',
-                'image',
-                '|',
-                'preview',
-                'side-by-side',
-                'fullscreen',
-              ],
-              imageUploadFunction: triggerFileUpload,
-            }}
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-6 bg-black text-white px-6 py-3 rounded hover:bg-gray-800 disabled:bg-gray-400"
-          >
-            {loading ? 'Publishing...' : 'Publish'}
-          </button>
-        </form>
+      <div className="flex-grow flex justify-center px-4 py-10">
+        <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-md">
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Enter your title..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full text-4xl font-bold text-gray-900 mb-6 focus:outline-none placeholder-gray-400 bg-white"
+              required
+            />
+            <SimpleMDE
+              getMdeInstance={(instance) => {
+                editorRef.current = instance;
+              }}
+              value={markdown}
+              onChange={setMarkdown}
+              options={{
+                placeholder: 'Write your post in markdown...',
+                spellChecker: false,
+                minHeight: '400px',
+                status: false,
+                toolbar: [
+                  'bold',
+                  'italic',
+                  'heading',
+                  '|',
+                  'quote',
+                  'code',
+                  '|',
+                  'unordered-list',
+                  'ordered-list',
+                  '|',
+                  'link',
+                  {
+                    name: 'image',
+                    action: triggerFileUpload,
+                    className: 'fa fa-image',
+                    title: 'Upload Image',
+                  },
+                  '|',
+                  'preview',
+                  'side-by-side',
+                  'fullscreen',
+                ],
+              }}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-6 bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
+            >
+              {loading ? 'Publishing...' : 'Publish'}
+            </button>
+          </form>
+        </div>
       </div>
       <Footer />
     </div>

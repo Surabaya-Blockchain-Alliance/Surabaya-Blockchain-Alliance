@@ -25,7 +25,7 @@ const Hero: React.FC = () => {
                         <p className="mb-5 text-gray-300 font-semibold" data-aos="fade-up">
                             Create quests that help grow your project while rewarding users for their contributions in a fun and interactive way
                         </p>
-                        <Link data-aos="fade-up" className="btn bg-transparent border-white font-bold border-2 rounded-full hover:text-white hover:border-black px-6 text-white" href={"/signin"}>Start Creating Quests <BsArrowRight className="text-xs" /></Link>
+                        <Link data-aos="fade-up" className="btn bg-transparent border-white font-bold border-2 rounded-full hover:text-white hover:border-black px-6 text-white" href={"/Create/event"}>Start Creating Events <BsArrowRight className="text-xs" /></Link>
                     </div>
                 </div>
             </div>
