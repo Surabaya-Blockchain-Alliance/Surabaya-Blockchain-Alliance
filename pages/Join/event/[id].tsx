@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db, auth } from "../../../config";
+import { db, auth } from "@/config";
 import { Teko } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
-import { FaWallet, FaCheckCircle, FaGift } from "react-icons/fa";
+import { FaCheckCircle, FaGift } from "react-icons/fa";
 import { BsArrowLeft } from "react-icons/bs";
-import { BrowserWallet } from "@meshsdk/core";
+import ConnectWallet from "@/components/button/ConnectWallet";
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
@@ -23,10 +23,7 @@ export default function EventDetailsPage() {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [wallet, setWallet] = useState(null);
   const [walletAddress, setWalletAddress] = useState(null);
-  const [wallets, setWallets] = useState([]);
-  const [showWalletModal, setShowWalletModal] = useState(false);
   const [joinStatus, setJoinStatus] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
   const [user, setUser] = useState(null);
@@ -37,6 +34,7 @@ export default function EventDetailsPage() {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      console.log("Auth state changed:", { uid: firebaseUser?.uid, email: firebaseUser?.email });
       setUser(firebaseUser);
       if (!firebaseUser && id) {
         router.push("/signin");
@@ -74,70 +72,70 @@ export default function EventDetailsPage() {
     fetchEventAndJoinStatus();
   }, [id, user]);
 
+  // Fetch user profile
   useEffect(() => {
     if (!user) return;
 
-    const fetchUserProfileAndWallets = async () => {
+    const fetchUserProfile = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
+          console.log("User profile fetched:", userData);
           setUserProfile({
             username: userData.username || "",
             walletAddress: userData.walletAddress || "",
           });
         } else {
+          console.warn("User profile not found for UID:", user.uid);
           setJoinStatus("❌ User profile not found. Please set up your profile at /profile.");
         }
-        const availableWallets = await BrowserWallet.getAvailableWallets();
-        setWallets(availableWallets);
-        if (availableWallets.length === 0) {
-          setJoinStatus("❌ No Cardano wallets found. Please install a wallet like Nami or Eternl from your browser store.");
-        }
       } catch (error) {
-        console.error("Error fetching user profile or wallets:", error);
-        setJoinStatus("❌ Failed to fetch user profile or wallets. Please try again.");
+        console.error("Error fetching user profile:", error);
+        setJoinStatus("❌ Failed to fetch user profile. Please try again.");
       }
     };
-    fetchUserProfileAndWallets();
+    fetchUserProfile();
   }, [user]);
 
-  const handleWalletSelect = async (walletId) => {
-    setShowWalletModal(false);
-    try {
-      const selectedWallet = await BrowserWallet.enable(walletId);
-      const address = await selectedWallet.getChangeAddress();
-      if (!isValidCardanoAddress(address)) {
-        throw new Error("Invalid Cardano wallet address.");
-      }
-      setWallet(selectedWallet);
+  const handleWalletConnect = (address) => {
+    if (isValidCardanoAddress(address)) {
       setWalletAddress(address);
       setJoinStatus("✅ Wallet connected.");
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      setJoinStatus("❌ Failed to connect wallet.");
+      console.log("Wallet connected via ConnectWallet:", address);
+    } else {
+      console.error("Invalid Cardano address from ConnectWallet:", address);
+      setJoinStatus("❌ Invalid wallet address. Please reconnect a valid Cardano wallet.");
     }
   };
 
   const handleJoinEvent = async () => {
-    if (!user) {
-      setJoinStatus("❌ User not authenticated. Please sign in.");
+    if (!user || !auth.currentUser || user.uid !== auth.currentUser.uid) {
+      console.error("Authentication error: User not authenticated or UID mismatch", {
+        user,
+        currentUser: auth.currentUser,
+      });
+      setJoinStatus("❌ User not authenticated. Please sign in again.");
       return;
     }
-    if (!wallet || !walletAddress) {
+    if (!walletAddress) {
+      console.error("Wallet error: No wallet address", { walletAddress });
       setJoinStatus("❌ Wallet not connected. Please connect a Cardano wallet.");
       return;
     }
     if (!isValidCardanoAddress(walletAddress)) {
+      console.error("Wallet error: Invalid Cardano address", { walletAddress });
       setJoinStatus("❌ Invalid wallet address. Please reconnect a valid Cardano wallet.");
       return;
     }
     if (!event) {
+      console.error("Event error: Event data not loaded", { event });
       setJoinStatus("❌ Event data not loaded. Please try again.");
       return;
     }
     if (hasJoined) {
+      console.log("Join status: Already joined", { userId: user.uid, eventId: id });
       setJoinStatus("✅ You have already joined this event.");
       return;
     }
@@ -148,24 +146,38 @@ export default function EventDetailsPage() {
 
       const joinData = {
         email: user.email || null,
-        username: userProfile.username || null,
-        walletAddress: walletAddress || null,
+        username: userProfile.username && userProfile.username !== "" ? userProfile.username : null,
+        walletAddress: walletAddress,
         checkedIn: null,
         checkInTimestamp: null,
         nftClaimEligible: null,
-        metadata: null,
+        metadata: {
+          address: walletAddress,
+          username: userProfile.username && userProfile.username !== "" ? userProfile.username : null,
+          attestation: "default-attestation",
+          eligible: false,
+          merkleTreeProof: "default-proof",
+        },
         nftClaimed: null,
         nftClaimTxHash: null,
       };
 
+      console.log("Attempting to join event with data:", JSON.stringify(joinData, null, 2));
 
-      await setDoc(doc(db, `nft-images/${id}/joined`, user.uid), joinData);
+      const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
+      await setDoc(joinDocRef, joinData);
       setHasJoined(true);
       setJoinStatus("✅ Successfully joined event!");
     } catch (error) {
-      console.error("Join error:", error);
+      console.error("Join error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        eventId: id,
+        userId: user.uid,
+      });
       if (error.code === "permission-denied") {
-        setJoinStatus("❌ Permission denied. Please ensure your wallet is connected and try again.");
+        setJoinStatus("❌ Permission denied. Please ensure your wallet is connected and your profile is set up correctly.");
       } else {
         setJoinStatus(`❌ Error: ${error.message}`);
       }
@@ -340,16 +352,7 @@ export default function EventDetailsPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setShowWalletModal(true)}
-              className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2 mt-4"
-              disabled={joinLoading || hasJoined}
-            >
-              <FaWallet />
-              {walletAddress
-                ? `Connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-                : "Connect Wallet"}
-            </button>
+            <ConnectWallet onConnect={handleWalletConnect} />
 
             {walletAddress && (
               <button
@@ -395,40 +398,6 @@ export default function EventDetailsPage() {
         </div>
       </main>
       <Footer />
-
-      {showWalletModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-xl text-center space-y-4 max-w-md w-full">
-            <h2 className="text-xl font-bold">Select a Wallet</h2>
-            {wallets.length === 0 ? (
-              <p className="text-red-700">
-                No wallets found. Please install a Cardano wallet like Nami or Eternl.
-              </p>
-            ) : (
-              wallets.map((wallet) => (
-                <button
-                  key={wallet.id}
-                  className="w-full py-2 border border-black text-black hover:bg-black hover:text-white rounded-md mb-2 flex items-center gap-2 justify-center"
-                  onClick={() => handleWalletSelect(wallet.id)}
-                  disabled={joinLoading}
-                >
-                  {wallet.icon && (
-                    <img src={wallet.icon} alt={wallet.name} className="w-5 h-5 rounded-sm" />
-                  )}
-                  {wallet.name}
-                </button>
-              ))
-            )}
-            <button
-              onClick={() => setShowWalletModal(false)}
-              className="text-sm text-gray-500 hover:underline"
-              disabled={joinLoading}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
