@@ -2,77 +2,110 @@ import { useState } from "react";
 import { BsCheck2Circle } from "react-icons/bs";
 import ConnectWallet from "@/components/button/ConnectWallet";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { initializeRewardPool } from "@/utils/handler";
+import { doc, setDoc } from "firebase/firestore";
+import { db, auth } from "@/config";
+import { useRouter } from "next/router";
+
+interface Task {
+  taskType: string;
+  link: string;
+  points: number;
+}
+
+interface FormState {
+  name: string;
+  description: string;
+  reward: string;
+  deadline: string;
+  tasks: Task[];
+  tokenPolicyId: string;
+  tokenName: string;
+}
 
 export default function CreateQuestPage() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     name: "",
     description: "",
     reward: "",
     deadline: "",
     tasks: [],
+    tokenPolicyId: "",
+    tokenName: "",
   });
-  const [walletAddress, setWalletAddress] = useState(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [walletApi, setWalletApi] = useState<any>(null);
+  const router = useRouter();
 
   const currentYear = new Date().getFullYear();
 
-  const handleTaskChange = (index, e) => {
+  const handleTaskChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const updatedTasks = [...form.tasks];
     const { name, value } = e.target;
     updatedTasks[index][name] = name === "points" ? parseInt(value) || 0 : value;
     setForm({ ...form, tasks: updatedTasks });
   };
 
-  const addTask = (taskType) => {
+  const addTask = (taskType: string) => {
     setForm({
       ...form,
       tasks: [...form.tasks, { taskType, link: "", points: 1 }],
     });
   };
 
-  const removeTask = (index) => {
+  const removeTask = (index: number) => {
     const updatedTasks = form.tasks.filter((_, i) => i !== index);
     setForm({ ...form, tasks: updatedTasks });
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async () => {
-    if (!walletAddress) {
-      return alert("Wallet not connected.");
+  // Initialize reward pool and store quest
+  const handleCreateQuest = async () => {
+    if (!walletAddress || !walletApi || !auth.currentUser) {
+      return alert("Wallet not connected or user not authenticated.");
+    }
+    if (!form.tokenPolicyId || !form.tokenName || !form.reward || !form.deadline) {
+      return alert("Please fill all fields (token policy ID, token name, reward, deadline).");
     }
 
     try {
       setLoading(true);
-      setStatus("Processing quest...");
+      setStatus("Initializing reward pool...");
 
-      const pointsCollected = form.tasks.reduce(
-        (total, task) => total + (parseInt(task.points) || 0),
-        0
+      const deadlineTimestamp = new Date(form.deadline).getTime();
+      const totalRewards = parseInt(form.reward) * 1_000_000;
+
+      // Initialize reward pool on Cardano testnet
+      const { txHash, scriptAddress } = await initializeRewardPool(
+        walletApi,
+        totalRewards,
+        deadlineTimestamp,
+        form.tokenPolicyId,
+        form.tokenName
       );
 
-      const res = await fetch("/api/create-quest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          userAddress: walletAddress,
-          pointsCollected,
-        }),
-      });
+      // Store quest in Firestore
+      const questData = {
+        ...form,
+        creator: walletAddress,
+        creatorUid: auth.currentUser.uid,
+        scriptAddress,
+        txHash,
+        createdAt: new Date().toISOString(),
+        status: "active",
+      };
+      await setDoc(doc(db, "quests", txHash), questData);
 
-      const result = await res.json();
-      if (res.ok) {
-        setStatus(`✅ Quest Created! Quest ID: ${result.questId}`);
-      } else {
-        setStatus(`❌ Quest creation failed: ${result.error}`);
-      }
+      setStatus(`✅ Quest Created! Tx Hash: ${txHash}`);
+      router.push("/quests"); // Redirect to quests page
     } catch (err) {
       console.error(err);
-      setStatus("Something went wrong.");
+      setStatus(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -98,7 +131,7 @@ export default function CreateQuestPage() {
 
             <div className="pt-16 pb-5">
               <h1 className="text-3xl font-extrabold">Create Quest</h1>
-              <p className="text-sm font-medium">Enter your quest details</p>
+              <p className="text-sm font-medium">Enter your quest and reward pool details</p>
             </div>
 
             <div className="space-y-4">
@@ -126,19 +159,44 @@ export default function CreateQuestPage() {
               </div>
 
               <div className="form-control">
-                <label className="label text-black">Reward</label>
+                <label className="label text-black">Total Reward (Tokens)</label>
+                <input
+                  type="number"
+                  name="reward"
+                  placeholder="Enter total token reward"
+                  value={form.reward}
+                  onChange={handleChange}
+                  className="input input-bordered w-full bg-transparent"
+                  min="0"
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label text-black">Token Policy ID</label>
                 <input
                   type="text"
-                  name="reward"
-                  placeholder="Enter quest reward"
-                  value={form.reward}
+                  name="tokenPolicyId"
+                  placeholder="Enter token policy ID"
+                  value={form.tokenPolicyId}
                   onChange={handleChange}
                   className="input input-bordered w-full bg-transparent"
                 />
               </div>
 
               <div className="form-control">
-                <label className="label text-black">Quest Deadline</label>
+                <label className="label text-black">Token Name</label>
+                <input
+                  type="text"
+                  name="tokenName"
+                  placeholder="Enter token name"
+                  value={form.tokenName}
+                  onChange={handleChange}
+                  className="input input-bordered w-full bg-transparent"
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label text-black">Claim Deadline</label>
                 <input
                   type="date"
                   name="deadline"
@@ -151,10 +209,7 @@ export default function CreateQuestPage() {
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold">Tasks</h3>
                 {form.tasks.map((task, index) => (
-                  <div
-                    key={index}
-                    className="form-control flex items-center gap-4"
-                  >
+                  <div key={index} className="form-control flex items-center gap-4">
                     <input
                       type="text"
                       name="link"
@@ -190,22 +245,25 @@ export default function CreateQuestPage() {
                   </button>
                   <button
                     className="btn btn-primary"
-                    onClick={() => addTask("Follow Discord")}
-                  >
-                    Add Follow Discord Task
-                  </button>
-                  <button
-                    className="btn btn-primary"
                     onClick={() => addTask("Join Discord")}
                   >
                     Add Join Discord Task
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => addTask("Retweet Tweet")}
+                  >
+                    Add Retweet Tweet Task
                   </button>
                 </div>
               </div>
 
               <ConnectWallet
-                onConnect={setWalletAddress}
-                onVerified={(address) => {
+                onConnect={(address: string, api: any) => {
+                  setWalletAddress(address);
+                  setWalletApi(api);
+                }}
+                onVerified={(address: string) => {
                   console.log("Wallet verified:", address);
                   setWalletAddress(address);
                 }}
@@ -213,10 +271,10 @@ export default function CreateQuestPage() {
 
               <button
                 className="btn w-full bg-black text-white hover:bg-gray-800"
-                onClick={handleSubmit}
+                onClick={handleCreateQuest}
                 disabled={loading}
               >
-                {loading ? "Creating..." : "Create Quest"}
+                {loading ? "Creating..." : "Create Quest & Reward Pool"}
                 <BsCheck2Circle className="text-lg ml-2" />
               </button>
 
@@ -247,7 +305,7 @@ export default function CreateQuestPage() {
               style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
             />
             <p className="text-lg font-medium">
-              Complete social actions and earn rewards!
+              Create quests and engage communities!
             </p>
           </div>
         </div>
