@@ -31,6 +31,7 @@
     "compressorjs": "^1.2.1",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
+    "discord.js": "^14.19.3",
     "dom-to-image": "^2.6.0",
     "dotenv": "^16.4.7",
     "firebase": "^11.3.1",

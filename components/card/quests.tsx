@@ -1,96 +1,90 @@
 import React from "react";
 import { BsCalendar } from "react-icons/bs";
-import { FaGift, FaUsers } from "react-icons/fa";
-import { FaTicket } from "react-icons/fa6";
-import Link from "next/link"; 
+import { FaGift } from "react-icons/fa";
+import Link from "next/link";
 
-const questProjects = [
-    {
-        title: "Follow, Engage & Win up to 500 XFI",
-        description: "By Community Nodes",
-        prize: "500 XFI",
-        rewards: "20",
-        schedule: "26 Jan at 7.00 AM - 9 Feb at 8.00 AM",
-        avatars: "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp",
-        media: [
-            "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp",
-            "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-        ],
-        id: "quest-1",
-    },
-    {
-        title: "Follow, Engage & Win up to 300 XFI",
-        description: "By Admin Nodes",
-        prize: "300 XFI",
-        rewards: "20",
-        schedule: "26 Jan at 7.00 AM - 9 Feb at 8.00 AM",
-        avatars: "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp",
-        media: [
-            "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp",
-            "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-        ],
-        id: "quest-2", 
-    },
-];
+interface Quest {
+  id: string;
+  name: string;
+  description: string;
+  prize: string; // e.g. "500 XFI"
+  rewardsCount: number; // e.g. 20
+  startDate: string; // ISO string
+  endDate: string;   // ISO string
+  avatars?: string;
+  media?: string[];
+}
 
-const QuestCard: React.FC = () => {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-3 overflow-hidden max-w-7xl mx-auto">
-            {questProjects.map((quest, index) => (
-                <Link key={index} href={`/quest/${quest.id}`}>
-                    <div
-                        role="alert"
-                        className="alert shadow-lg bg-transparent border-1 rounded-lg border-black cursor-pointer hover:shadow-xl hover:scale-105 duration-300 ease-out transform transition-all"
-                    >
-                        <div className="space-y-2 p-4">
-                            <p className="font-semibold text-black leading-none">{quest.title}</p>
-                            <div className="flex items-center justify-start space-x-2">
-                                <div className="avatar">
-                                    <div className="w-4 rounded-full">
-                                        <img src={quest.avatars} alt="avatar" />
-                                    </div>
-                                </div>
-                                <span className="text-xs">{quest.description}</span>
-                            </div>
-                            <div className="flex items-center justify-start -space-x-2 py-2">
-                                {quest.media.map((media, idx) => (
-                                    <div key={idx} className="avatar">
-                                        <div className="w-6 rounded-full">
-                                            <img src={media} alt="media" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="block space-y-2 py-2 text-gray-700">
-                                <div className="flex justify-start items-center space-x-2">
-                                    <BsCalendar />
-                                    <span className="text-sm font-semibold">{quest.schedule}</span>
-                                </div>
-                                <div className="flex justify-start items-start space-x-10">
-                                    <div className="flex justify-start items-center space-x-2">
-                                        <FaGift />
-                                        <span className="text-sm font-semibold">{quest.rewards} Rewards</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="join">
-                            <div className="indicator">
-                                <span className="indicator-item badge text-white bg-black font-semibold">
-                                    {quest.prize}
-                                </span>
-                                <div className="avatar">
-                                    <div className="w-16 rounded-xl">
-                                        <img src={quest.avatars} alt="avatar" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+interface QuestCardProps {
+  quests: Quest[];
+}
+
+const QuestCard: React.FC<QuestCardProps> = ({ quests }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-3 overflow-hidden max-w-7xl mx-auto">
+      {quests.map((quest) => (
+        <Link key={quest.id} href={`/quest/${quest.id}/do`} passHref>
+          <div
+            role="alert"
+            className="alert shadow-lg bg-transparent border border-black rounded-lg cursor-pointer hover:shadow-xl hover:scale-105 duration-300 ease-out transform transition-all"
+          >
+            <div className="space-y-2 p-4">
+              <p className="font-semibold text-black leading-none">{quest.name}</p>
+              <div className="flex items-center justify-start space-x-2">
+                <div className="avatar">
+                  <div className="w-4 rounded-full">
+                    <img
+                      src={quest.avatars ?? "/img/logo.png"}
+                      alt="avatar"
+                      onError={(e) => ((e.target as HTMLImageElement).src = "/img/logo.png")}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs">{quest.description}</span>
+              </div>
+              <div className="flex items-center justify-start -space-x-2 py-2">
+                {(quest.media ?? []).map((media, idx) => (
+                  <div key={idx} className="avatar">
+                    <div className="w-6 rounded-full">
+                      <img src={media} alt="media" />
                     </div>
-                </Link>
-            ))}
-        </div>
-    );
+                  </div>
+                ))}
+              </div>
+              <div className="block space-y-2 py-2 text-gray-700">
+                <div className="flex justify-start items-center space-x-2">
+                  <BsCalendar />
+                  <span className="text-sm font-semibold">
+                    {new Date(quest.startDate).toLocaleString()} - {new Date(quest.endDate).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-start items-center space-x-2">
+                  <FaGift />
+                  <span className="text-sm font-semibold">{quest.rewardsCount} Rewards</span>
+                </div>
+              </div>
+            </div>
+            <div className="join">
+              <div className="indicator">
+                <span className="indicator-item badge text-white bg-black font-semibold">
+                  {quest.prize}
+                </span>
+                <div className="avatar">
+                  <div className="w-16 rounded-xl">
+                    <img
+                      src={quest.avatars ?? "/img/logo.png"}
+                      alt="avatar"
+                      onError={(e) => ((e.target as HTMLImageElement).src = "/img/logo.png")}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
 };
 
 export default QuestCard;
