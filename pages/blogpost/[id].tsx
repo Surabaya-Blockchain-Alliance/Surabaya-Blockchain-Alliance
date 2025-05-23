@@ -1,87 +1,57 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { db, auth } from '../../config';
-import { doc, getDoc, updateDoc, collection, addDoc, getDocs, serverTimestamp, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import Footer from '@/components/footer';
+import { db, auth } from '@/config';
+import { doc, getDoc, updateDoc, collection, addDoc, getDocs, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, query, where } from 'firebase/firestore';
 import Navbar from '@/components/navbar';
-
-const renderJsonContent = (content) => {
-  if (!Array.isArray(content)) return null;
-
-  return content.map((block, index) => {
-    switch (block.type) {
-      case 'heading':
-        const Tag = `h${block.level}`;
-        return (
-          <Tag
-            key={index}
-            className={`font-bold ${
-              block.level === 1 ? 'text-3xl' : block.level === 2 ? 'text-2xl' : 'text-xl'
-            } mt-4 mb-2 text-gray-900`}
-          >
-            {block.content}
-          </Tag>
-        );
-      case 'paragraph':
-        return (
-          <p key={index} className="text-gray-600 mt-2 mb-4">
-            {block.content}
-          </p>
-        );
-      case 'image':
-        return (
-          <div key={index} className="relative w-full h-80 mt-4 mb-4">
-            <img
-              src={block.src}
-              alt={block.alt || 'Post Image'}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              className="rounded-md"
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
-  });
-};
+import Footer from '@/components/footer';
+import { generateHTML } from '@tiptap/html';
+import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Head from 'next/head';
 
 export default function BlogPost() {
-  const [post, setPost] = useState(null);
+  const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
-  const [comments, setComments] = useState([]);
-  const [user, setUser] = useState(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const router = useRouter();
-  const { id } = router.query;
+  const { id } = router.query; // Changed from slug to id
 
   useEffect(() => {
     const fetchPostAndComments = async () => {
       if (!id) return;
 
       try {
-        const postRef = doc(db, 'blogposts', id);
-        const postSnapshot = await getDoc(postRef);
-
-        if (postSnapshot.exists()) {
-          setPost(postSnapshot.data());
+        // Query the blogposts collection using postNumber instead of slug
+        const postsQuery = query(collection(db, 'blogposts'), where('postNumber', '==', parseInt(id as string)));
+        const postsSnapshot = await getDocs(postsQuery);
+        if (!postsSnapshot.empty) {
+          const postData = postsSnapshot.docs[0];
+          setPost({ id: postData.id, ...postData.data() });
+          const commentsRef = collection(db, 'blogposts', postData.id, 'comments');
+          const commentsSnapshot = await getDocs(commentsRef);
+          const commentsData = commentsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            likes: doc.data().likes || 0,
+            likedBy: doc.data().likedBy || [],
+          }));
+          setComments(commentsData);
         } else {
-          console.error('No such document!');
+          console.error('No post found for postNumber:', id);
+          setError('Post not found.');
         }
-
-        const commentsRef = collection(db, 'blogposts', id, 'comments');
-        const commentsSnapshot = await getDocs(commentsRef);
-        const commentsData = commentsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          likes: doc.data().likes || 0,
-          likedBy: doc.data().likedBy || [],
-        }));
-        setComments(commentsData);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching post or comments:', error);
         setError('Failed to load post or comments.');
       } finally {
         setLoading(false);
@@ -104,17 +74,17 @@ export default function BlogPost() {
     fetchPostAndComments();
 
     return () => unsubscribe();
-  }, [id]);
+  }, [id]); // Changed from slug to id
 
   const handleLike = async () => {
     if (!user) {
-      setError('You must be logged in to like this post.');
+      toast.error('You must be logged in to like this post.');
       router.push('/signin');
       return;
     }
 
     try {
-      const postRef = doc(db, 'blogposts', id);
+      const postRef = doc(db, 'blogposts', post.id);
       const hasLiked = post?.likedBy?.includes(user.uid);
 
       if (hasLiked) {
@@ -122,37 +92,38 @@ export default function BlogPost() {
           likes: (post?.likes || 0) - 1,
           likedBy: arrayRemove(user.uid),
         });
-        setPost((prev) => ({
+        setPost((prev: any) => ({
           ...prev,
           likes: (prev?.likes || 0) - 1,
-          likedBy: prev.likedBy.filter((uid) => uid !== user.uid),
+          likedBy: prev.likedBy.filter((uid: string) => uid !== user.uid),
         }));
       } else {
         await updateDoc(postRef, {
           likes: (post?.likes || 0) + 1,
           likedBy: arrayUnion(user.uid),
         });
-        setPost((prev) => ({
+        setPost((prev: any) => ({
           ...prev,
           likes: (prev?.likes || 0) + 1,
           likedBy: [...(prev.likedBy || []), user.uid],
         }));
       }
+      toast.success(hasLiked ? 'Like removed!' : 'Post liked!');
     } catch (error) {
       console.error('Error updating likes:', error);
-      setError('Failed to update like status.');
+      toast.error('Failed to update like status.');
     }
   };
 
-  const handleCommentLike = async (commentId) => {
+  const handleCommentLike = async (commentId: string) => {
     if (!user) {
-      setError('You must be logged in to like this comment.');
+      toast.error('You must be logged in to like this comment.');
       router.push('/signin');
       return;
     }
 
     try {
-      const commentRef = doc(db, 'blogposts', id, 'comments', commentId);
+      const commentRef = doc(db, 'blogposts', post.id, 'comments', commentId);
       const comment = comments.find((c) => c.id === commentId);
       const hasLiked = comment?.likedBy?.includes(user.uid);
 
@@ -167,7 +138,7 @@ export default function BlogPost() {
               ? {
                   ...c,
                   likes: (c.likes || 0) - 1,
-                  likedBy: c.likedBy.filter((uid) => uid !== user.uid),
+                  likedBy: c.likedBy.filter((uid: string) => uid !== user.uid),
                 }
               : c
           )
@@ -189,32 +160,33 @@ export default function BlogPost() {
           )
         );
       }
+      toast.success(hasLiked ? 'Comment like removed!' : 'Comment liked!');
     } catch (error) {
       console.error('Error updating comment likes:', error);
-      setError('Failed to update comment like status.');
+      toast.error('Failed to update comment like status.');
     }
   };
 
-  const handleCommentSubmit = async (e) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
-      setError('You must be logged in to comment.');
+      toast.error('You must be logged in to comment.');
       router.push('/signin');
       return;
     }
 
     if (!comment.trim()) {
-      setError('Comment cannot be empty.');
+      toast.error('Comment cannot be empty.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const commentsRef = collection(db, 'blogposts', id, 'comments');
+      const commentsRef = collection(db, 'blogposts', post.id, 'comments');
 
       if (editingCommentId) {
-        const commentRef = doc(db, 'blogposts', id, 'comments', editingCommentId);
+        const commentRef = doc(db, 'blogposts', post.id, 'comments', editingCommentId);
         const updatedComment = {
           content: comment.trim(),
           author: user.username,
@@ -232,6 +204,7 @@ export default function BlogPost() {
           )
         );
         setEditingCommentId(null);
+        toast.success('Comment updated successfully!');
       } else {
         const newComment = {
           content: comment.trim(),
@@ -245,35 +218,37 @@ export default function BlogPost() {
           ...prev,
           { id: commentDocRef.id, ...newComment, createdAt: { seconds: Date.now() / 1000 } },
         ]);
+        toast.success('Comment posted successfully!');
       }
       setComment('');
     } catch (error) {
       console.error('Error submitting comment:', error);
-      setError('Failed to submit comment.');
+      toast.error('Failed to submit comment.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleEditComment = (commentId, content) => {
+  const handleEditComment = (commentId: string, content: string) => {
     setEditingCommentId(commentId);
     setComment(content);
     setError('');
   };
 
-  const handleDeleteComment = async (commentId) => {
+  const handleDeleteComment = async (commentId: string) => {
     if (!user) {
-      setError('You must be logged in to delete a comment.');
+      toast.error('You must be logged in to delete a comment.');
       return;
     }
 
     try {
-      const commentRef = doc(db, 'blogposts', id, 'comments', commentId);
+      const commentRef = doc(db, 'blogposts', post.id, 'comments', commentId);
       await deleteDoc(commentRef);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      toast.success('Comment deleted successfully!');
     } catch (error) {
       console.error('Error deleting comment:', error);
-      setError('Failed to delete comment.');
+      toast.error('Failed to delete comment.');
     }
   };
 
@@ -286,14 +261,47 @@ export default function BlogPost() {
   }
 
   const hasLiked = user && post?.likedBy?.includes(user.uid);
+  const contentHtml = post
+    ? generateHTML(post.content, [
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          codeBlock: {},
+          blockquote: {},
+          bulletList: {},
+          orderedList: {},
+        }),
+        Image.configure({
+          HTMLAttributes: {
+            class: 'max-w-full h-auto',
+            onerror: "this.onerror=null;this.src='/fallback-image.jpg';",
+            crossOrigin: 'anonymous',
+          },
+        }),
+        Link.configure({
+          HTMLAttributes: {
+            class: 'text-blue-600 underline',
+          },
+        }),
+        TextStyle,
+        Color,
+      ])
+    : '';
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
+      <Head>
+        <title>{post.title}</title>
+        <meta name="description" content={post.content?.content?.[0]?.content?.[0]?.text?.slice(0, 150) || 'Blog post'} />
+      </Head>
       <Navbar />
       <div className="flex-grow flex justify-center px-4 py-10">
         <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-md prose prose-lg">
           <h1 className="text-4xl font-bold text-gray-900 mb-6">{post.title}</h1>
-          <div className="text-gray-600">{renderJsonContent(post.content)}</div>
+          <div
+            dangerouslySetInnerHTML={{ __html: contentHtml }}
+            className="text-gray-600"
+            onError={(e) => console.error('Image load error:', e)}
+          />
           <div className="border-t pt-4 mt-6 flex items-center justify-between">
             <div>
               <span className="text-sm text-gray-500">Posted by {post.author}</span>
@@ -331,7 +339,6 @@ export default function BlogPost() {
             </div>
           </div>
 
-          {/* Comment Section */}
           <div className="mt-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Comments</h2>
             {error && <p className="text-red-600 mb-4">{error}</p>}
@@ -404,7 +411,6 @@ export default function BlogPost() {
                 ))
             )}
 
-            {/* Comment Form */}
             <form onSubmit={handleCommentSubmit} className="mt-6">
               <textarea
                 value={comment}
@@ -435,6 +441,7 @@ export default function BlogPost() {
                 </button>
               )}
             </form>
+            <ToastContainer position="top-right" autoClose={3000} />
           </div>
         </div>
       </div>
