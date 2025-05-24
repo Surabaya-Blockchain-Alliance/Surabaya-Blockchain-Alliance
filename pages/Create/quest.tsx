@@ -25,7 +25,7 @@ interface FormState {
   tasks: Task[];
   tokenPolicyId: string;
   tokenName: string;
-  adminWalletAddress: string;
+  scriptAddress: string;
 }
 
 export default function CreateQuestPage() {
@@ -37,7 +37,7 @@ export default function CreateQuestPage() {
     tasks: [],
     tokenPolicyId: "",
     tokenName: "",
-    adminWalletAddress: "",
+    scriptAddress: "",
   });
 
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -56,17 +56,38 @@ export default function CreateQuestPage() {
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthReady(true);
-    });
-    return () => unsubscribe();
+    const styleSheet = document.createElement("style");
+    styleSheet.type = "text/css";
+    styleSheet.innerText = `
+      @keyframes bg-scrolling-reverse {
+        100% { background-position: -50px -50px; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
   }, []);
 
   useEffect(() => {
-    // Sync adminWalletAddress with walletAddress when wallet is connected
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      console.log("Auth state changed:", !!currentUser);
+      setUser(currentUser);
+      setAuthReady(true);
+      if (!currentUser && authReady) {
+        console.log("Redirecting to /signin");
+        router.push({
+          pathname: "/signin",
+          query: { redirect: router.asPath },
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [authReady, router]);
+
+  useEffect(() => {
     if (walletAddress) {
-      setForm((prev) => ({ ...prev, adminWalletAddress: walletAddress }));
+      setForm((prev) => ({ ...prev, scriptAddress: walletAddress }));
     }
   }, [walletAddress]);
 
@@ -106,7 +127,7 @@ export default function CreateQuestPage() {
       }
 
       const username = usernames.trim().replace(/^@/, "");
-      if (!username) {
+      if (!/^[A-Za-z0-9_]{1,15}$/.test(username)) {
         toast.error("Please enter a valid Twitter username.");
         return;
       }
@@ -163,9 +184,7 @@ export default function CreateQuestPage() {
     }
 
     try {
-      console.log("Current User:", auth.currentUser);
-      const token = await auth.currentUser.getIdToken(true);
-      console.log("Auth Token:", token);
+      console.log("Starting quest creation for user:", auth.currentUser.uid);
       setLoading(true);
       setStatus("Creating quest...");
 
@@ -176,17 +195,23 @@ export default function CreateQuestPage() {
         !form.tokenName ||
         !form.reward ||
         !form.deadline ||
-        !form.adminWalletAddress ||
+        !form.scriptAddress ||
         form.tasks.length === 0 ||
         form.tasks.some((task) => !task.link)
       ) {
-        toast.error("Please fill all fields, including task links and admin wallet.");
+        toast.error("Please fill all fields, including task links and script address.");
         return;
       }
 
       const rewardNum = parseInt(form.reward);
       if (isNaN(rewardNum) || rewardNum < 0) {
         toast.error("Reward must be a valid positive number.");
+        return;
+      }
+
+      const deadlineDate = new Date(form.deadline);
+      if (isNaN(deadlineDate.getTime()) || deadlineDate < new Date()) {
+        toast.error("Deadline must be a valid future date.");
         return;
       }
 
@@ -202,7 +227,7 @@ export default function CreateQuestPage() {
           transaction.set(counterRef, { lastQuestId: 0 });
           newQuestId = 1;
         } else {
-          const lastQuestId = counterDoc.data().lastQuestId || 0;
+          const lastQuestId = counterDoc.data()?.lastQuestId || 0;
           newQuestId = lastQuestId + 1;
           console.log("New Quest ID:", newQuestId);
         }
@@ -211,27 +236,33 @@ export default function CreateQuestPage() {
 
       const questRef = doc(db, "quests", newQuestId.toString());
       const questData = {
-        ...form,
+        name: form.name,
+        description: form.description,
         reward: rewardNum,
-        creatorUid: auth.currentUser.uid,
-        creatorWalletAddress: walletAddress || form.adminWalletAddress,
+        deadline: form.deadline,
+        tasks: form.tasks,
+        tokenPolicyId: form.tokenPolicyId,
+        tokenName: form.tokenName,
+        scriptAddress: walletAddress || form.scriptAddress,
         status: "active",
         createdAt: new Date().toISOString(),
         startDate: new Date().toISOString(),
         endDate: form.deadline,
         id: newQuestId.toString(),
+        creatorUid: auth.currentUser.uid,
       };
 
       console.log("Writing to questRef:", questRef.path, "Data:", questData);
       await setDoc(questRef, questData);
 
+      toast.success(`Quest Created! ID: ${newQuestId}`);
       setStatus(`✅ Quest Created! ID: ${newQuestId}`);
-      router.push(`/quest/${newQuestId}/do`);
+      router.push(`/quests/${newQuestId}/do`);
     } catch (err: any) {
-      console.error("Error:", err);
+      console.error("Quest creation error:", err);
       setStatus(`❌ Error: ${err.message}`);
       if (err.code === "permission-denied") {
-        toast.error("Permission denied: Please ensure you are signed in and authorized.");
+        toast.error("You lack permission to create quests. Ensure you are signed in and authorized.");
       } else {
         toast.error(`Failed to create quest: ${err.message}`);
       }
@@ -240,28 +271,47 @@ export default function CreateQuestPage() {
     }
   };
 
+  const bgImage =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
+
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center mt-20">Loading authentication...</div>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
+          background: `url(${bgImage}) repeat 0 0`,
+          animation: "bg-scrolling-reverse 0.92s linear infinite",
+        }}
+      >
+        <div className="text-black font-semibold bg-white p-4 rounded-lg shadow-md">
+          Loading authentication...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div
+      className="min-h-screen"
+      style={{
+        fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
+        background: `url(${bgImage}) repeat 0 0`,
+        animation: "bg-scrolling-reverse 0.92s linear infinite",
+      }}
+    >
+      <Navbar />
       <div
-        className="w-full h-screen text-gray-800 flex flex-col md:flex-row justify-between items-start gap-5"
-        style={{ fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif' }}
+        className="w-full text-gray-800 flex flex-col md:flex-row justify-between items-start gap-5 p-4"
       >
         <div className="bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10 max-h-[100vh] overflow-y-auto">
           <div className="flex justify-between items-center">
-            <img src="/img/logo.png" alt="logo" width={200} />
+            <img src="/img/logo.png" alt="Cardano Hub Indonesia" width={200} />
           </div>
 
           <div className="pt-16 pb-5">
-            <h1 className="text-3xl font-extrabold">Create Quest</h1>
-            <p className="text-sm font-medium">Enter your quest and reward pool details</p>
+            <h1 className="text-3xl font-extrabold text-black">Create Quest</h1>
+            <p className="text-sm font-medium text-black">Enter your quest and reward pool details</p>
           </div>
 
           <div className="space-y-4">
@@ -273,7 +323,7 @@ export default function CreateQuestPage() {
                 placeholder="Enter quest name"
                 value={form.name}
                 onChange={handleChange}
-                className="input input-bordered w-full bg-transparent"
+                className="input input-bordered w-full bg-transparent text-black"
               />
             </div>
 
@@ -284,7 +334,7 @@ export default function CreateQuestPage() {
                 placeholder="Enter quest description"
                 value={form.description}
                 onChange={handleChange}
-                className="textarea textarea-bordered w-full bg-transparent"
+                className="textarea textarea-bordered w-full bg-transparent text-black"
                 rows={4}
               />
             </div>
@@ -297,7 +347,7 @@ export default function CreateQuestPage() {
                 placeholder="Enter total token reward"
                 value={form.reward}
                 onChange={handleChange}
-                className="input input-bordered w-full bg-transparent"
+                className="input input-bordered w-full bg-transparent text-black"
                 min="0"
               />
             </div>
@@ -310,7 +360,7 @@ export default function CreateQuestPage() {
                 placeholder="Enter token policy ID"
                 value={form.tokenPolicyId}
                 onChange={handleChange}
-                className="input input-bordered w-full bg-transparent"
+                className="input input-bordered w-full bg-transparent text-black"
               />
             </div>
 
@@ -322,18 +372,18 @@ export default function CreateQuestPage() {
                 placeholder="Enter token name"
                 value={form.tokenName}
                 onChange={handleChange}
-                className="input input-bordered w-full bg-transparent"
+                className="input input-bordered w-full bg-transparent text-black"
               />
             </div>
 
             <div className="form-control">
-              <label className="label text-black">Admin Wallet Address</label>
+              <label className="label text-black">Script Address</label>
               <input
                 type="text"
-                name="adminWalletAddress"
+                name="scriptAddress"
                 placeholder="Connect wallet to set address"
-                value={form.adminWalletAddress}
-                className="input input-bordered w-full bg-transparent"
+                value={form.scriptAddress}
+                className="input input-bordered w-full bg-transparent text-black"
                 disabled
               />
             </div>
@@ -345,13 +395,13 @@ export default function CreateQuestPage() {
                 name="deadline"
                 value={form.deadline}
                 onChange={handleChange}
-                className="input input-bordered w-full bg-transparent"
+                className="input input-bordered w-full bg-transparent text-black"
                 min={new Date().toISOString().split("T")[0]}
               />
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Tasks</h3>
+              <h3 className="text-xl font-semibold text-black">Tasks</h3>
               {form.tasks.map((task, index) => (
                 <div key={index} className="form-control flex items-center gap-4">
                   <input
@@ -360,7 +410,7 @@ export default function CreateQuestPage() {
                     value={task.link}
                     onChange={(e) => handleTaskChange(index, e)}
                     placeholder={`Link for ${task.taskType}`}
-                    className="input input-bordered w-1/2"
+                    className="input input-bordered w-1/2 text-black"
                     disabled={task.taskType === "Follow Twitter"}
                   />
                   <input
@@ -369,11 +419,11 @@ export default function CreateQuestPage() {
                     value={task.points}
                     onChange={(e) => handleTaskChange(index, e)}
                     placeholder="Points"
-                    className="input input-bordered w-1/4"
+                    className="input input-bordered w-1/4 text-black"
                     min="1"
                   />
                   <button
-                    className="btn btn-danger w-1/6"
+                    className="btn btn-danger w-1/6 bg-red-500 text-white hover:bg-red-600"
                     onClick={() => removeTask(index)}
                   >
                     Remove
@@ -382,19 +432,19 @@ export default function CreateQuestPage() {
               ))}
 
               <div className="flex gap-4 flex-wrap">
-                <button className="btn btn-primary" onClick={() => addTask("Follow Twitter")}>
+                <button className="btn btn-primary bg-blue-500 text-white hover:bg-blue-600" onClick={() => addTask("Follow Twitter")}>
                   Add Follow Twitter Task
                 </button>
-                <button className="btn btn-primary" onClick={() => addTask("Join Discord")}>
+                <button className="btn btn-primary bg-blue-500 text-white hover:bg-blue-600" onClick={() => addTask("Join Discord")}>
                   Add Join Discord Task
                 </button>
-                <button className="btn btn-primary" onClick={() => addTask("Retweet Tweet")}>
+                <button className="btn btn-primary bg-blue-500 text-white hover:bg-blue-600" onClick={() => addTask("Retweet Tweet")}>
                   Add Retweet Tweet Task
                 </button>
-                <button className="btn btn-primary" onClick={() => addTask("Like Tweet")}>
+                <button className="btn btn-primary bg-blue-500 text-white hover:bg-blue-600" onClick={() => addTask("Like Tweet")}>
                   Add Like Tweet Task
                 </button>
-                <button className="btn btn-primary" onClick={() => addTask("Visit Website")}>
+                <button className="btn btn-primary bg-blue-500 text-white hover:bg-blue-600" onClick={() => addTask("Visit Website")}>
                   Add Visit Website Task
                 </button>
               </div>
@@ -408,14 +458,14 @@ export default function CreateQuestPage() {
             <button
               className="btn w-full bg-black text-white hover:bg-gray-800 flex items-center justify-center disabled:opacity-50"
               onClick={handleCreateQuest}
-              disabled={loading}
+              disabled={loading || !auth.currentUser}
             >
               {loading ? "Creating..." : "Create Quest"}
               <BsCheck2Circle className="text-lg ml-2" />
             </button>
 
             {status && (
-              <div className="alert alert-info mt-2">
+              <div className="alert alert-info mt-2 text-black">
                 <span>{status}</span>
               </div>
             )}
@@ -430,7 +480,7 @@ export default function CreateQuestPage() {
         </div>
 
         <div className="bg-transparent text-center p-10 md:p-48 flex-1">
-          <h1 className="text-4xl font-semibold">
+          <h1 className="text-4xl font-semibold text-black">
             <span className="text-blue-800">Cardano Hub</span>{" "}
             <span className="text-red-600">Indonesia</span>
           </h1>
@@ -440,14 +490,14 @@ export default function CreateQuestPage() {
             autoplay
             style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
           />
-          <p className="text-lg font-medium">Create quests and engage communities!</p>
+          <p className="text-lg font-medium text-black">Create quests and engage communities!</p>
         </div>
       </div>
 
       {twitterTaskModal.open && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-xl font-semibold mb-4">Add {twitterTaskModal.taskType} Task</h3>
+            <h3 className="text-xl font-semibold text-black mb-4">Add {twitterTaskModal.taskType} Task</h3>
             <div className="form-control">
               {twitterTaskModal.taskType === "Follow Twitter" ? (
                 <>
@@ -457,7 +507,7 @@ export default function CreateQuestPage() {
                     placeholder="e.g., cardanohubindonesia"
                     value={twitterTaskModal.usernames}
                     onChange={(e) => handleTwitterUsernameChange(e.target.value)}
-                    className="input input-bordered w-full bg-transparent"
+                    className="input input-bordered w-full bg-transparent text-black"
                   />
                 </>
               ) : (
@@ -470,17 +520,17 @@ export default function CreateQuestPage() {
                     onChange={(e) =>
                       setTwitterTaskModal({ ...twitterTaskModal, tweetUrl: e.target.value })
                     }
-                    className="input input-bordered w-full bg-transparent"
+                    className="input input-bordered w-full bg-transparent text-black"
                   />
                 </>
               )}
             </div>
             <div className="flex gap-4 mt-4">
-              <button className="btn btn-primary w-1/2" onClick={handleAddTwitterTask}>
+              <button className="btn btn-primary w-1/2 bg-blue-500 text-white hover:bg-blue-600" onClick={handleAddTwitterTask}>
                 Add Task
               </button>
               <button
-                className="btn btn-secondary w-1/2"
+                className="btn btn-secondary w-1/2 bg-gray-500 text-white hover:bg-gray-600"
                 onClick={() =>
                   setTwitterTaskModal({ open: false, taskType: "", usernames: "", tweetUrl: "" })
                 }
@@ -492,6 +542,7 @@ export default function CreateQuestPage() {
         </div>
       )}
 
+      <Footer />
       <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
