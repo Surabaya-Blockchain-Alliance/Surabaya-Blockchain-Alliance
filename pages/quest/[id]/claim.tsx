@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "@/config";
 import ConnectWallet from "@/components/button/ConnectWallet";
-import { claimReward } from "@/utils/handler";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -23,6 +22,7 @@ interface Quest {
   scriptAddress: string;
   deadline: string;
   status: string;
+  tasks: { taskType: string; link: string; points: number }[];
 }
 
 export default function ClaimQuestPage() {
@@ -94,25 +94,29 @@ export default function ClaimQuestPage() {
 
     setSubmitting(true);
     try {
-      const maxPoints = quest.tasks.reduce((sum, task) => sum + task.points, 0);
-      const rewardAmount = (quest.reward * userProgress.totalPoints) / maxPoints; // Proportional reward
+      const response = await fetch("/api/claim-reward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questId: quest.id,
+          userAddress: walletAddress,
+          walletApi,
+        }),
+      });
 
-      const txHash = await claimReward(
-        walletApi,
-        quest.scriptAddress,
-        Math.floor(rewardAmount * 1_000_000),
-        quest.tokenPolicyId,
-        quest.tokenName
-      );
-
-      await setDoc(
-        doc(db, "quests", quest.id, "userProgress", auth.currentUser!.uid),
-        { status: "rewarded" },
-        { merge: true }
-      );
-      setUserProgress({ ...userProgress, status: "rewarded" });
-      toast.success(`Reward claimed! Tx Hash: ${txHash}`);
-      setTimeout(() => router.push("/quests"), 2000);
+      const result = await response.json();
+      if (response.ok) {
+        await setDoc(
+          doc(db, "quests", quest.id, "userProgress", auth.currentUser!.uid),
+          { status: "rewarded" },
+          { merge: true }
+        );
+        setUserProgress({ ...userProgress, status: "rewarded" });
+        toast.success(`Reward claimed! Tx Hash: ${result.txHash}`);
+        setTimeout(() => router.push("/quests"), 2000);
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error: any) {
       console.error("Error claiming reward:", error);
       toast.error(`Failed to claim reward: ${error.message}`);

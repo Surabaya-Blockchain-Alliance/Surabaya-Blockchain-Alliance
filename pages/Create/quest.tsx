@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { BsCheck2Circle } from "react-icons/bs";
 import ConnectWallet from "@/components/button/ConnectWallet";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { fetchTaskHandler, updateUserProgress } from "@/utils/taskverification";
 import { convertTwitterUsernamesToIds } from "@/utils/Socialhandler";
 import { doc, setDoc, collection as collectionRef } from "firebase/firestore";
 import { db, auth } from "@/config";
@@ -25,6 +24,7 @@ interface FormState {
   tasks: Task[];
   tokenPolicyId: string;
   tokenName: string;
+  adminWalletAddress: string;
 }
 
 export default function CreateQuestPage() {
@@ -36,6 +36,7 @@ export default function CreateQuestPage() {
     tasks: [],
     tokenPolicyId: "",
     tokenName: "",
+    adminWalletAddress: "",
   });
 
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -59,7 +60,6 @@ export default function CreateQuestPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log("Auth state:", currentUser ? currentUser.uid : "No user");
       setUser(currentUser);
       setAuthReady(true);
     });
@@ -72,7 +72,8 @@ export default function CreateQuestPage() {
   ) => {
     const updatedTasks = [...form.tasks];
     const { name, value } = e.target;
-    updatedTasks[index][name] = name === "points" ? Math.max(1, parseInt(value) || 1) : value;
+    updatedTasks[index][name] =
+      name === "points" ? Math.max(1, parseInt(value) || 1) : value;
     setForm({ ...form, tasks: updatedTasks });
   };
 
@@ -103,14 +104,10 @@ export default function CreateQuestPage() {
           .filter((u) => u);
         const usernameToIdMap = await convertTwitterUsernamesToIds(usernameList);
 
-        // Filter out invalid usernames
         const validMap: { [username: string]: string } = {};
         for (const [username, id] of Object.entries(usernameToIdMap)) {
-          if (id) {
-            validMap[username] = id;
-          } else {
-            toast.warn(`Username @${username} not found and will be skipped.`);
-          }
+          if (id) validMap[username] = id;
+          else toast.warn(`Username @${username} not found and will be skipped.`);
         }
 
         if (Object.keys(validMap).length === 0) {
@@ -123,12 +120,16 @@ export default function CreateQuestPage() {
           ...form,
           tasks: [...form.tasks, { taskType, link, points: 1 }],
         });
-        setTwitterTaskModal({ open: false, taskType: "", usernames: "", tweetUrl: "" });
+        setTwitterTaskModal({
+          open: false,
+          taskType: "",
+          usernames: "",
+          tweetUrl: "",
+        });
       } catch (error: any) {
         toast.error(`Failed to add Twitter task: ${error.message}`);
       }
     } else {
-      // Retweet Tweet or Like Tweet
       if (!tweetUrl?.trim()) {
         toast.error("Please enter a tweet URL.");
         return;
@@ -143,7 +144,12 @@ export default function CreateQuestPage() {
         ...form,
         tasks: [...form.tasks, { taskType, link: tweetUrl, points: 1 }],
       });
-      setTwitterTaskModal({ open: false, taskType: "", usernames: "", tweetUrl: "" });
+      setTwitterTaskModal({
+        open: false,
+        taskType: "",
+        usernames: "",
+        tweetUrl: "",
+      });
     }
   };
 
@@ -159,9 +165,6 @@ export default function CreateQuestPage() {
   };
 
   const handleCreateQuest = async () => {
-    console.log("Form data:", form);
-    console.log("auth.currentUser:", user?.uid || "No user");
-
     if (!auth.currentUser) {
       toast.error("User not authenticated. Please sign in.");
       return;
@@ -173,10 +176,11 @@ export default function CreateQuestPage() {
       !form.tokenName ||
       !form.reward ||
       !form.deadline ||
+      !form.adminWalletAddress || 
       form.tasks.length === 0 ||
       form.tasks.some((task) => !task.link)
     ) {
-      toast.error("Please fill all fields, including task links.");
+      toast.error("Please fill all fields, including task links and admin wallet.");
       return;
     }
 
@@ -197,38 +201,42 @@ export default function CreateQuestPage() {
         creatorUid: auth.currentUser.uid,
         status: "active",
         createdAt: new Date().toISOString(),
+        startDate: new Date().toISOString(),
+        endDate: form.deadline,
         id: questRef.id,
       };
-      console.log("questData:", JSON.stringify(questData, null, 2));
 
       await setDoc(questRef, questData);
-      console.log("Quest created with ID:", questRef.id);
-      setStatus(`✅ Quest Created! ID: ${questRef.id}`);
+
+      // Initialize reward pool
+      const initResponse = await fetch("/api/initialize-reward-pool", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questId: questRef.id,
+          tokenPolicyId: form.tokenPolicyId,
+          tokenName: form.tokenName,
+          reward: rewardNum,
+          adminWalletAddress: walletAddress,
+        }),
+      });
+
+      const initResult = await initResponse.json();
+      if (!initResponse.ok) {
+        throw new Error(initResult.error);
+      }
+
+      // Update quest with script address
+      await setDoc(questRef, { scriptAddress: initResult.scriptAddress }, { merge: true });
+
+      setStatus(`✅ Quest Created! ID: ${questRef.id}, Tx Hash: ${initResult.txHash}`);
       router.push(`/quests/${questRef.id}/do`);
     } catch (err: any) {
-      console.error("Firestore error:", err);
+      console.error("Error:", err);
       setStatus(`❌ Error: ${err.message}`);
       toast.error(`Failed to create quest: ${err.message}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVerifyTask = async (task: Task) => {
-    if (!auth.currentUser || !walletAddress) {
-      toast.error("User not authenticated or wallet not connected.");
-      return;
-    }
-    const result = await fetchTaskHandler(
-      "test-quest",
-      auth.currentUser.uid,
-      walletAddress,
-      task,
-      userCredentials
-    );
-    toast[result.success ? "success" : "error"](result.message);
-    if (result.success) {
-      await updateUserProgress("test-quest", auth.currentUser.uid, task, result);
     }
   };
 
@@ -319,6 +327,18 @@ export default function CreateQuestPage() {
             </div>
 
             <div className="form-control">
+              <label className="label text-black">Admin Wallet Address</label>
+              <input
+                type="text"
+                name="adminWalletAddress"
+                placeholder="Enter admin wallet address"
+                value={walletAddress}
+                onChange={handleChange}
+                className="input input-bordered w-full bg-transparent"
+              />
+            </div>
+
+            <div className="form-control">
               <label className="label text-black">Claim Deadline</label>
               <input
                 type="date"
@@ -358,85 +378,37 @@ export default function CreateQuestPage() {
                   >
                     Remove
                   </button>
-                  <button
-                    className="btn btn-primary w-1/6"
-                    onClick={() => handleVerifyTask(task)}
-                  >
-                    Test Verify
-                  </button>
                 </div>
               ))}
 
               <div className="flex gap-4 flex-wrap">
-                <button
-                  className="btn btn-primary"
-                  onClick={() => addTask("Follow Twitter")}
-                >
+                <button className="btn btn-primary" onClick={() => addTask("Follow Twitter")}>
                   Add Follow Twitter Task
                 </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => addTask("Join Discord")}
-                >
+                <button className="btn btn-primary" onClick={() => addTask("Join Discord")}>
                   Add Join Discord Task
                 </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => addTask("Retweet Tweet")}
-                >
+                <button className="btn btn-primary" onClick={() => addTask("Retweet Tweet")}>
                   Add Retweet Tweet Task
                 </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => addTask("Like Tweet")}
-                >
+                <button className="btn btn-primary" onClick={() => addTask("Like Tweet")}>
                   Add Like Tweet Task
                 </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => addTask("Visit Website")}
-                >
+                <button className="btn btn-primary" onClick={() => addTask("Visit Website")}>
                   Add Visit Website Task
                 </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => addTask("Own NFT")}
-                >
+                <button className="btn btn-primary" onClick={() => addTask("Own NFT")}>
                   Add Own NFT Task
+                </button>
+                <button className="btn btn-primary" onClick={() => addTask("Attend Event")}>
+                  Add Attend Event Task
                 </button>
               </div>
             </div>
 
-            <div className="form-control">
-              <label className="label text-black">Twitter ID (for testing)</label>
-              <input
-                type="text"
-                placeholder="Enter your Twitter ID"
-                value={userCredentials.twitterId || ""}
-                onChange={(e) => setUserCredentials({ ...userCredentials, twitterId: e.target.value })}
-                className="input input-bordered w-full bg-transparent"
-              />
-            </div>
-            <div className="form-control">
-              <label className="label text-black">Discord ID (for testing)</label>
-              <input
-                type="text"
-                placeholder="Enter your Discord ID"
-                value={userCredentials.discordId || ""}
-                onChange={(e) => setUserCredentials({ ...userCredentials, discordId: e.target.value })}
-                className="input input-bordered w-full bg-transparent"
-              />
-            </div>
-
             <ConnectWallet
-              onConnect={(address: string) => {
-                console.log("Wallet connected:", address);
-                setWalletAddress(address);
-              }}
-              onVerified={(address: string) => {
-                console.log("Wallet verified:", address);
-                setWalletAddress(address);
-              }}
+              onConnect={(address: string) => setWalletAddress(address)}
+              onVerified={(address: string) => setWalletAddress(address)}
             />
 
             <button
@@ -474,13 +446,10 @@ export default function CreateQuestPage() {
             autoplay
             style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
           />
-          <p className="text-lg font-medium">
-            Create quests and engage communities!
-          </p>
+          <p className="text-lg font-medium">Create quests and engage communities!</p>
         </div>
       </div>
 
-      {/* Twitter Task Modal */}
       {twitterTaskModal.open && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
@@ -488,9 +457,7 @@ export default function CreateQuestPage() {
             <div className="form-control">
               {twitterTaskModal.taskType === "Follow Twitter" ? (
                 <>
-                  <label className="label text-black">
-                    Twitter Usernames (comma-separated)
-                  </label>
+                  <label className="label text-black">Twitter Usernames (comma-separated)</label>
                   <textarea
                     placeholder="e.g., user1,user2,user3"
                     value={twitterTaskModal.usernames}
@@ -517,15 +484,14 @@ export default function CreateQuestPage() {
               )}
             </div>
             <div className="flex gap-4 mt-4">
-              <button
-                className="btn btn-primary w-1/2"
-                onClick={handleAddTwitterTask}
-              >
+              <button className="btn btn-primary w-1/2" onClick={handleAddTwitterTask}>
                 Add Task
               </button>
               <button
                 className="btn btn-secondary w-1/2"
-                onClick={() => setTwitterTaskModal({ open: false, taskType: "", usernames: "", tweetUrl: "" })}
+                onClick={() =>
+                  setTwitterTaskModal({ open: false, taskType: "", usernames: "", tweetUrl: "" })
+                }
               >
                 Cancel
               </button>
@@ -534,17 +500,7 @@ export default function CreateQuestPage() {
         </div>
       )}
 
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
 }

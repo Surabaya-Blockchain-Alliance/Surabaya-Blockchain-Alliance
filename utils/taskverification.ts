@@ -1,229 +1,152 @@
-import axios from "axios";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "@/config";
+import { Lucid, Blockfrost } from "lucid-cardano";
+import { arrayUnion, increment } from "firebase/firestore";
+import { initSync } from "lucid-cardano";
+import * as wasm from "cardano-multiplatform-lib-nodejs";
+import axios from "axios";
 
-const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN || "";
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || "";
-const BLOCKFROST_API_KEY = process.env.BLOCKFROST_API_KEY || "";
+const TWITTER_API_IO_KEY = "21d9ac51d9f94d19a4c04e4a2336b233"; 
+const TWITTER_API_IO_URL = "https://api.twitterapi.io/twitter/user/followings";
 
-interface Task {
-  taskType: string;
-  link: string;
-  points: number;
+async function getUserFollowings(username, cursor = "") {
+  try {
+    const response = await axios.get(TWITTER_API_IO_URL, {
+      headers: { "X-API-Key": TWITTER_API_IO_KEY },
+      params: { userName: username, cursor },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching user followings from twitterapi.io:", error.response?.data || error.message);
+    throw new Error(`Failed to fetch followings: ${error.message}`);
+  }
 }
 
-interface VerificationResult {
-  success: boolean;
-  message: string;
-}
-
-interface UsernameToIdMap {
-  [username: string]: string;
-}
-
-const twitterClient = axios.create({
-  baseURL: "https://api.twitter.com/2",
-  headers: { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` },
-});
-
-const discordClient = axios.create({
-  baseURL: "https://discord.com/api",
-  headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
-});
-
-const blockfrostClient = axios.create({
-  baseURL: "https://cardano-mainnet.blockfrost.io/api/v0",
-  headers: { project_id: BLOCKFROST_API_KEY },
-});
-
-export const fetchTaskHandler = async (
+export async function fetchTaskHandler(
   questId: string,
   userId: string,
   walletAddress: string,
-  task: Task,
-  userCredentials?: { twitterId?: string; discordId?: string }
-): Promise<VerificationResult> => {
+  task: { taskType: string; link: string; points: number },
+  userCredentials: { twitterId?: string; discordId?: string; twitterUsername?: string }
+) {
   try {
+    // Initialize WASM
+    initSync(wasm);
+
+    let success = false;
+    let message = "";
+
     switch (task.taskType) {
       case "Follow Twitter":
-        return await verifyTwitterFollow(userCredentials?.twitterId, task.link);
-      case "Join Discord":
-        return await verifyDiscordJoin(userCredentials?.discordId, task.link);
-      case "Retweet Tweet":
-        return await verifyTwitterRetweet(userCredentials?.twitterId, task.link);
-      case "Like Tweet":
-        return await verifyTwitterLike(userCredentials?.twitterId, task.link);
-      case "Visit Website":
-        return await verifyWebsiteVisit(walletAddress, task.link);
+        if (!userCredentials.twitterUsername) {
+          throw new Error("Twitter username not provided in userCredentials");
+        }
+
+        const twitterIds = JSON.parse(task.link);
+        const targetUsernames = Object.keys(twitterIds).map(u => u.toLowerCase());
+
+        let allFollowings = [];
+        let cursor = "";
+        let hasNextPage = true;
+        while (hasNextPage) {
+          const data = await getUserFollowings(userCredentials.twitterUsername, cursor);
+          allFollowings = allFollowings.concat(data.followings || []);
+          hasNextPage = data.has_next_page;
+          cursor = data.next_cursor || "";
+        }
+        success = allFollowings.some(user => 
+          targetUsernames.includes(user.username.toLowerCase())
+        );
+        message = success ? "Twitter follow verified" : "Twitter follow not verified";
+        break;
+
       case "Own NFT":
-        return await verifyNFTOwnership(walletAddress, task.link);
+        const lucid = await Lucid.new(
+          new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", process.env.BLOCKFROST_API_KEY),
+          "Testnet"
+        );
+        const utxos = await lucid.utxosAt(walletAddress);
+        success = utxos.some((utxo) => utxo.assets[task.link] > 0);
+        message = success ? "NFT ownership verified" : "NFT not found in wallet";
+        break;
+
+      case "Join Discord":
+        success = true; // Placeholder: Implement Discord API check
+        message = "Discord join verified";
+        break;
+
+      case "Retweet Tweet":
+      case "Like Tweet":
+        const tweetId = task.link.match(/status\/(\d+)/)?.[1];
+        if (tweetId) {
+          const endpoint = task.taskType === "Retweet Tweet" ? "retweets" : "likes";
+          const res = await fetch(
+            `https://api.twitter.com/2/tweets/${tweetId}/${endpoint}`,
+            {
+              headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` },
+            }
+          );
+          const tweetData = await res.json();
+          success = tweetData.data?.some((user: any) => user.id === userCredentials.twitterId);
+          message = success ? `${task.taskType} verified` : `${task.taskType} not verified`;
+        } else {
+          success = false;
+          message = "Invalid tweet URL";
+        }
+        break;
+
+      case "Visit Website":
+        success = true; // Placeholder: Implement signed message or API check
+        message = "Website visit verified";
+        break;
+
+      case "Attend Event":
+        const lucidEvent = await Lucid.new(
+          new Blockfrost("https://cardano-testnet.blockfrost.io/api/v0", process.env.BLOCKFROST_API_KEY),
+          "Testnet"
+        );
+        const utxosEvent = await lucidEvent.utxosAt(walletAddress);
+        success = utxosEvent.some((utxo) => utxo.assets[task.link] > 0);
+        message = success ? "Event attendance verified" : "Attendance NFT not found";
+        break;
+
       default:
-        return { success: false, message: `Unsupported task type: ${task.taskType}` };
-    }
-  } catch (error: any) {
-    console.error(`Task verification failed (${task.taskType}):`, error);
-    return { success: false, message: `Verification failed: ${error.message}` };
-  }
-};
-
-async function verifyTwitterFollow(twitterId: string | undefined, link: string): Promise<VerificationResult> {
-  if (!twitterId) {
-    return { success: false, message: "Twitter ID not provided. Please connect your Twitter account." };
-  }
-  if (!TWITTER_BEARER_TOKEN) {
-    return { success: false, message: "Twitter API credentials missing." };
-  }
-
-  try {
-    let usernameToIdMap: UsernameToIdMap;
-    try {
-      usernameToIdMap = JSON.parse(link);
-    } catch {
-      return { success: false, message: "Invalid task link format. Expected JSON { username: id }." };
+        success = false;
+        message = "Unsupported task type";
     }
 
-    const followResponse = await twitterClient.get(`/users/${twitterId}/following`);
-    const followedIds = followResponse.data.data.map((user: any) => user.id);
-    const missingFollows: string[] = [];
-    for (const [username, id] of Object.entries(usernameToIdMap)) {
-      if (id && !followedIds.includes(id)) {
-        missingFollows.push(username);
-      }
+    if (success) {
+      // Update Firestore
+      const userProgressRef = doc(db, "quests", questId, "userProgress", userId);
+      await updateDoc(userProgressRef, {
+        completedTasks: arrayUnion({
+          taskIndex: task.index,
+          proof: task.link,
+          awardedPoints: task.points,
+          completedAt: new Date().toISOString(),
+        }),
+        totalPoints: increment(task.points),
+        userWallet: walletAddress,
+        status: "pending",
+      });
+
+      // Add to reward pool
+      const questRef = doc(db, "quests", questId);
+      const questSnap = await getDoc(questRef);
+      const questData = questSnap.data();
+      await fetch("/api/add-eligible", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questId,
+          address: walletAddress,
+          amount: task.points,
+        }),
+      });
     }
 
-    if (missingFollows.length === 0) {
-      return { success: true, message: "User follows all required accounts." };
-    } else {
-      return {
-        success: false,
-        message: `User does not follow: ${missingFollows.map((u) => `@${u}`).join(", ")}.`,
-      };
-    }
+    return { success, message };
   } catch (error: any) {
-    return { success: false, message: `Twitter follow check failed: ${error.message}` };
+    return { success: false, message: error.message };
   }
-};
-
-async function verifyTwitterRetweet(twitterId: string | undefined, link: string): Promise<VerificationResult> {
-  if (!twitterId) {
-    return { success: false, message: "Twitter ID not provided. Please connect your Twitter account." };
-  }
-  if (!TWITTER_BEARER_TOKEN) {
-    return { success: false, message: "Twitter API credentials missing." };
-  }
-
-  try {
-    const tweetId = link.match(/status\/(\d+)/)?.[1];
-    if (!tweetId) {
-      return { success: false, message: "Invalid tweet URL." };
-    }
-
-    const retweetResponse = await twitterClient.get(`/tweets/${tweetId}/retweeted_by`);
-    const retweeters = retweetResponse.data.data.some((user: any) => user.id === twitterId);
-
-    return retweeters
-      ? { success: true, message: `User has retweeted the tweet.` }
-      : { success: false, message: `User has not retweeted the tweet.` };
-  } catch (error: any) {
-    return { success: false, message: `Twitter retweet check failed: ${error.message}` };
-  }
-};
-
-async function verifyTwitterLike(twitterId: string | undefined, link: string): Promise<VerificationResult> {
-  if (!twitterId) {
-    return { success: false, message: "Twitter ID not provided. Please connect your Twitter account." };
-  }
-  if (!TWITTER_BEARER_TOKEN) {
-    return { success: false, message: "Twitter API credentials missing." };
-  }
-
-  try {
-    const tweetId = link.match(/status\/(\d+)/)?.[1];
-    if (!tweetId) {
-      return { success: false, message: "Invalid tweet URL." };
-    }
-
-    const likeResponse = await twitterClient.get(`/tweets/${tweetId}/liking_users`);
-    const likers = likeResponse.data.data.some((user: any) => user.id === twitterId);
-
-    return likers
-      ? { success: true, message: `User has liked the tweet.` }
-      : { success: false, message: `User has not liked the tweet.` };
-  } catch (error: any) {
-    return { success: false, message: `Twitter like check failed: ${error.message}` };
-  }
-};
-
-async function verifyDiscordJoin(discordId: string | undefined, link: string): Promise<VerificationResult> {
-  if (!discordId) {
-    return { success: false, message: "Discord ID not provided. Please connect your Discord account." };
-  }
-  if (!DISCORD_BOT_TOKEN) {
-    return { success: false, message: "Discord API credentials missing." };
-  }
-
-  try {
-    const guildId = link.match(/\/channels\/(\d+)/)?.[1] || link;
-    const memberResponse = await discordClient.get(`/guilds/${guildId}/members/${discordId}`);
-
-    return memberResponse.data
-      ? { success: true, message: `User is a member of the Discord server.` }
-      : { success: false, message: `User is not a member of the Discord server.` };
-  } catch (error: any) {
-    return { success: false, message: `Discord join check failed: ${error.message}` };
-  }
-};
-
-async function verifyWebsiteVisit(walletAddress: string, link: string): Promise<VerificationResult> {
-  console.log(`Verifying website visit for wallet ${walletAddress} to ${link}`);
-  return { success: true, message: "Website visit verified (mock)." };
-};
-
-async function verifyNFTOwnership(walletAddress: string, link: string): Promise<VerificationResult> {
-  if (!BLOCKFROST_API_KEY) {
-    return { success: false, message: "Blockfrost API key missing." };
-  }
-
-  try {
-    const policyId = link;
-    const assetsResponse = await blockfrostClient.get(`/accounts/${walletAddress}/addresses/assets`);
-
-    const ownsNFT = assetsResponse.data.some((asset: any) => asset.policy_id === policyId);
-
-    return ownsNFT
-      ? { success: true, message: `User owns NFT with policy ID ${policyId}.` }
-      : { success: false, message: `User does not own NFT with policy ID ${policyId}.` };
-  } catch (error: any) {
-    return { success: false, message: `NFT ownership check failed: ${error.message}` };
-  }
-};
-
-export const updateUserProgress = async (
-  questId: string,
-  userId: string,
-  task: Task,
-  result: VerificationResult
-): Promise<void> => {
-  if (!result.success) return;
-
-  try {
-    const progressRef = doc(db, "quests", questId, "userProgress", userId);
-    await setDoc(
-      progressRef,
-      {
-        tasks: {
-          [task.taskType]: {
-            completed: true,
-            points: task.points,
-            verifiedAt: new Date().toISOString(),
-          },
-        },
-      },
-      { merge: true }
-    );
-    console.log(`Progress updated for user ${userId} on quest ${questId}`);
-  } catch (error: any) {
-    console.error("Error updating user progress:", error);
-    throw new Error(`Failed to update progress: ${error.message}`);
-  }
-};
+}

@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "@/config";
 import ConnectWallet from "@/components/button/ConnectWallet";
+import { fetchTaskHandler, updateUserProgress } from "@/utils/taskverification";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
@@ -29,6 +30,7 @@ interface Quest {
   deadline: string;
   tokenPolicyId: string;
   tokenName: string;
+  scriptAddress: string;
   status: string;
 }
 
@@ -38,6 +40,10 @@ export default function DoQuestPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userCredentials, setUserCredentials] = useState<{
+    twitterId?: string;
+    discordId?: string;
+  }>({});
   const router = useRouter();
   const { id } = router.query;
 
@@ -77,43 +83,46 @@ export default function DoQuestPage() {
     fetchQuestAndProgress();
   }, [id, walletAddress]);
 
-  const handleTaskSubmit = async (taskIndex: number, proof: string) => {
+  const handleTaskSubmit = async (taskIndex: number, task: Task) => {
     if (!auth.currentUser || !walletAddress || !quest) {
       toast.error("Please connect your wallet and sign in.");
       return;
     }
 
-    if (!proof.trim()) {
-      toast.error("Proof link cannot be empty.");
-      return;
-    }
-
     setSubmitting(true);
     try {
-      const task = quest.tasks[taskIndex];
-      const awardedPoints = task.points;
-
-      const updatedProgress: UserProgress = {
-        completedTasks: [
-          ...(userProgress?.completedTasks || []),
-          {
-            taskIndex,
-            proof,
-            awardedPoints,
-            completedAt: new Date().toISOString(),
-          },
-        ],
-        totalPoints: (userProgress?.totalPoints || 0) + awardedPoints,
-        userWallet: walletAddress,
-        status: "pending",
-      };
-
-      await setDoc(
-        doc(db, "quests", quest.id, "userProgress", auth.currentUser.uid),
-        updatedProgress
+      const result = await fetchTaskHandler(
+        quest.id,
+        auth.currentUser.uid,
+        walletAddress,
+        task,
+        userCredentials
       );
-      setUserProgress(updatedProgress);
-      toast.success(`Task "${task.taskType}" submitted! ${awardedPoints} points earned.`);
+      toast[result.success ? "success" : "error"](result.message);
+
+      if (result.success) {
+        const awardedPoints = task.points;
+        const updatedProgress: UserProgress = {
+          completedTasks: [
+            ...(userProgress?.completedTasks || []),
+            {
+              taskIndex,
+              proof: task.link,
+              awardedPoints,
+              completedAt: new Date().toISOString(),
+            },
+          ],
+          totalPoints: (userProgress?.totalPoints || 0) + awardedPoints,
+          userWallet: walletAddress,
+          status: "pending",
+        };
+
+        await setDoc(
+          doc(db, "quests", quest.id, "userProgress", auth.currentUser.uid),
+          updatedProgress
+        );
+        setUserProgress(updatedProgress);
+      }
     } catch (error) {
       console.error("Error submitting task:", error);
       toast.error("Failed to submit task.");
@@ -140,9 +149,30 @@ export default function DoQuestPage() {
         <p className="text-sm mb-4">Your Points: {userProgress?.totalPoints || 0}</p>
 
         <ConnectWallet
-          onConnect={(address: string, api: any) => setWalletAddress(address)}
+          onConnect={(address: string) => setWalletAddress(address)}
           onVerified={(address: string) => setWalletAddress(address)}
         />
+
+        <div className="form-control mb-4">
+          <label className="label text-black">Twitter ID (for verification)</label>
+          <input
+            type="text"
+            placeholder="Enter your Twitter ID"
+            value={userCredentials.twitterId || ""}
+            onChange={(e) => setUserCredentials({ ...userCredentials, twitterId: e.target.value })}
+            className="input input-bordered w-full bg-transparent"
+          />
+        </div>
+        <div className="form-control mb-4">
+          <label className="label text-black">Discord ID (for verification)</label>
+          <input
+            type="text"
+            placeholder="Enter your Discord ID"
+            value={userCredentials.discordId || ""}
+            onChange={(e) => setUserCredentials({ ...userCredentials, discordId: e.target.value })}
+            className="input input-bordered w-full bg-transparent"
+          />
+        </div>
 
         <div className="space-y-4 mt-6">
           <h2 className="text-xl font-semibold text-gray-800">Tasks</h2>
@@ -158,29 +188,13 @@ export default function DoQuestPage() {
                 {isCompleted ? (
                   <p className="text-green-600 font-medium">Completed!</p>
                 ) : (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const proof = (e.target as any).proof.value;
-                      handleTaskSubmit(index, proof);
-                    }}
-                    className="mt-2"
+                  <button
+                    className="mt-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    onClick={() => handleTaskSubmit(index, task)}
+                    disabled={submitting}
                   >
-                    <input
-                      type="text"
-                      name="proof"
-                      placeholder="Enter proof link (e.g., Twitter post)"
-                      className="w-full p-3 border rounded-lg bg-transparent text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={submitting}
-                    />
-                    <button
-                      type="submit"
-                      className="mt-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                      disabled={submitting}
-                    >
-                      {submitting ? "Submitting..." : "Submit Task"}
-                    </button>
-                  </form>
+                    {submitting ? "Verifying..." : "Verify Task"}
+                  </button>
                 )}
               </div>
             );
