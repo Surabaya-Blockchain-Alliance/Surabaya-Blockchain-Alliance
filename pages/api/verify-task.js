@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY as string;
-const DISCORD_BOT_TOKEN = process.env.DISCORD_CLIENT_ID as string;
+const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY;
+const DISCORD_BOT_TOKEN = process.env.DISCORD_CLIENT_ID;
 
 const twitterClient = axios.create({
   baseURL: "https://api.twitterapi.io/twitter",
