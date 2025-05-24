@@ -33,7 +33,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quests = [] }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-3 overflow-hidden max-w-7xl mx-auto">
       {quests.map((quest) => (
-        <Link key={quest.id} href={`/quests/${quest.id}/do`} passHref>
+        <Link key={quest.id} href={`/quest/${quest.id}/do`} passHref>
           <div
             role="alert"
             className="alert shadow-lg bg-transparent border border-black rounded-lg cursor-pointer hover:shadow-xl hover:scale-105 duration-300 ease-out transform transition-all"
