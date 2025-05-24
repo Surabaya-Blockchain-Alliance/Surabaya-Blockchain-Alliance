@@ -56,73 +56,74 @@ export default function DoQuestPage() {
   const router = useRouter();
   const { id } = router.query;
 
-  useEffect(() => {
-    if (!router.isReady) return;
+useEffect(() => {
+  if (!router.isReady) return;
 
-    console.log("DoQuestPage useEffect, id:", id, "auth.currentUser:", auth.currentUser);
+  console.log("DoQuestPage useEffect, id:", id, "auth.currentUser:", auth.currentUser);
 
-    const fetchQuestAndUserData = async () => {
-      if (!id || typeof id !== "string") {
-        console.log("Invalid or missing id:", id);
-        toast.error("Invalid quest ID.");
+  const fetchQuestAndUserData = async () => {
+    if (!id || typeof id !== "string") {
+      console.log("Invalid or missing id:", id);
+      toast.error("Invalid quest ID.");
+      setLoading(false);
+      return;
+    }
+
+    if (!auth.currentUser) {
+      console.log("No authenticated user");
+      toast.error("Please sign in to view quest.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const questDoc = await getDoc(doc(db, "quests", id));
+      if (questDoc.exists()) {
+        setQuest({ id: questDoc.id, ...questDoc.data() } as Quest);
+      } else {
+        toast.error("Quest not found.");
         setLoading(false);
         return;
       }
 
-      if (!auth.currentUser) {
-        console.log("No authenticated user");
-        toast.error("Please sign in to view quest.");
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUserData({
+          twitterUsername: data.twitterUsername || "",
+          discordUsername: data.discordUsername || "",
+          walletAddress: data.walletAddress || "",
+        });
+      } else {
+        toast.error("User data not found. Please complete your profile.");
         setLoading(false);
         return;
       }
 
-      try {
-        const questDoc = await getDoc(doc(db, "quests", id));
-        if (questDoc.exists()) {
-          setQuest({ id: questDoc.id, ...questDoc.data() } as Quest);
-        } else {
-          toast.error("Quest not found.");
-          setLoading(false);
-          return;
-        }
-
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserData({
-            twitterUsername: data.twitterUsername || "",
-            discordUsername: data.discordUsername || "",
-            walletAddress: data.walletAddress || "",
-          });
-        } else {
-          toast.error("User data not found. Please complete your profile.");
-          setLoading(false);
-          return;
-        }
-
-        const progressDoc = await getDoc(
-          doc(db, "quests", id, "userProgress", auth.currentUser.uid)
-        );
-        if (progressDoc.exists()) {
-          setUserProgress(progressDoc.data() as UserProgress);
-        } else {
-          setUserProgress({
-            tasksCompleted: [],
-            pointsCollected: 0,
-            walletAddress: userDoc.data()?.walletAddress || "",
-            status: "pending",
-          });
-        }
-      } catch (error: any) {
-        console.error("Error fetching data:", error);
-        toast.error(`Failed to load data: ${error.message}`);
-      } finally {
-        setLoading(false);
+      const progressDoc = await getDoc(
+        doc(db, "quests", id, "userProgress", auth.currentUser.uid)
+      );
+      if (progressDoc.exists()) {
+        setUserProgress(progressDoc.data() as UserProgress);
+      } else {
+        setUserProgress({
+          tasksCompleted: [],
+          pointsCollected: 0,
+          walletAddress: userDoc.data()?.walletAddress || "",
+          status: "pending",
+        });
       }
-    };
+    } catch (error: any) {
+      console.error("Error fetching data:", error);
+      toast.error(`Failed to load data: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchQuestAndUserData();
-  }, [router.isReady, id]);
+  fetchQuestAndUserData();
+}, [router.isReady, id]);
+
 
 const handleTaskSubmit = async (taskIndex: number, task: Task) => {
   if (!userData?.twitterUsername) {
@@ -161,8 +162,6 @@ const handleTaskSubmit = async (taskIndex: number, task: Task) => {
         walletAddress: userData.walletAddress,
         status: 'pending',
       };
-
-      // Prevent double completion of the same task
       if (!currentProgress.tasksCompleted.some((t) => t.taskIndex === taskIndex)) {
         const newTaskCompletion = {
           taskIndex,
@@ -179,8 +178,6 @@ const handleTaskSubmit = async (taskIndex: number, task: Task) => {
           tasksCompleted: updatedTasksCompleted,
           pointsCollected: updatedPoints,
         };
-
-        // Save updated progress to Firestore
         await setDoc(
           doc(db, "quests", quest.id, "userProgress", auth.currentUser!.uid),
           updatedProgress,
