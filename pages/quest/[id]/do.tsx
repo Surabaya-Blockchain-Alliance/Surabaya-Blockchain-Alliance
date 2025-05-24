@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "@/config";
-import ConnectWallet from "@/components/button/ConnectWallet";
-import { fetchTaskHandler, updateUserProgress } from "@/utils/taskverification";
+import axios from 'axios';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
@@ -15,9 +14,9 @@ interface Task {
 }
 
 interface UserProgress {
-  completedTasks: { taskIndex: number; proof: string; awardedPoints: number; completedAt: string }[];
-  totalPoints: number;
-  userWallet: string;
+  tasksCompleted: { taskIndex: number; proof: string; awardedPoints: number; completedAt: string }[];
+  pointsCollected: number;
+  walletAddress: string;
   status: "pending" | "verified" | "rewarded";
 }
 
@@ -30,115 +29,189 @@ interface Quest {
   deadline: string;
   tokenPolicyId: string;
   tokenName: string;
-  scriptAddress: string;
   status: string;
+}
+
+interface UserData {
+  twitterUsername?: string;
+  discordUsername?: string;
+  walletAddress?: string;
+}
+
+function extractTweetId(url: string): string | undefined {
+  try {
+    const match = url.match(/status\/(\d+)/);
+    return match ? match[1] : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export default function DoQuestPage() {
   const [quest, setQuest] = useState<Quest | null>(null);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userCredentials, setUserCredentials] = useState<{
-    twitterId?: string;
-    discordId?: string;
-  }>({});
   const router = useRouter();
   const { id } = router.query;
 
   useEffect(() => {
-    const fetchQuestAndProgress = async () => {
-      if (!id || !auth.currentUser) return;
+    if (!router.isReady) return;
+
+    console.log("DoQuestPage useEffect, id:", id, "auth.currentUser:", auth.currentUser);
+
+    const fetchQuestAndUserData = async () => {
+      if (!id || typeof id !== "string") {
+        console.log("Invalid or missing id:", id);
+        toast.error("Invalid quest ID.");
+        setLoading(false);
+        return;
+      }
+
+      if (!auth.currentUser) {
+        console.log("No authenticated user");
+        toast.error("Please sign in to view quest.");
+        setLoading(false);
+        return;
+      }
 
       try {
-        const questDoc = await getDoc(doc(db, "quests", id as string));
+        const questDoc = await getDoc(doc(db, "quests", id));
         if (questDoc.exists()) {
           setQuest({ id: questDoc.id, ...questDoc.data() } as Quest);
-
-          const progressDoc = await getDoc(
-            doc(db, "quests", id as string, "userProgress", auth.currentUser.uid)
-          );
-          if (progressDoc.exists()) {
-            setUserProgress(progressDoc.data() as UserProgress);
-          } else {
-            setUserProgress({
-              completedTasks: [],
-              totalPoints: 0,
-              userWallet: walletAddress || "",
-              status: "pending",
-            });
-          }
         } else {
           toast.error("Quest not found.");
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error("Error fetching quest:", error);
-        toast.error("Failed to load quest.");
+
+        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserData({
+            twitterUsername: data.twitterUsername || "",
+            discordUsername: data.discordUsername || "",
+            walletAddress: data.walletAddress || "",
+          });
+        } else {
+          toast.error("User data not found. Please complete your profile.");
+          setLoading(false);
+          return;
+        }
+
+        const progressDoc = await getDoc(
+          doc(db, "quests", id, "userProgress", auth.currentUser.uid)
+        );
+        if (progressDoc.exists()) {
+          setUserProgress(progressDoc.data() as UserProgress);
+        } else {
+          setUserProgress({
+            tasksCompleted: [],
+            pointsCollected: 0,
+            walletAddress: userDoc.data()?.walletAddress || "",
+            status: "pending",
+          });
+        }
+      } catch (error: any) {
+        console.error("Error fetching data:", error);
+        toast.error(`Failed to load data: ${error.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchQuestAndProgress();
-  }, [id, walletAddress]);
+    fetchQuestAndUserData();
+  }, [router.isReady, id]);
 
-  const handleTaskSubmit = async (taskIndex: number, task: Task) => {
-    if (!auth.currentUser || !walletAddress || !quest) {
-      toast.error("Please connect your wallet and sign in.");
-      return;
+const handleTaskSubmit = async (taskIndex: number, task: Task) => {
+  if (!userData?.twitterUsername) {
+    toast.error('Please add your Twitter username in your profile.');
+    return;
+  }
+
+  setSubmitting(true);
+
+  try {
+    const body = {
+      type: task.taskType.toLowerCase(),
+      username: userData.twitterUsername,
+      target: task.link,
+    };
+
+    const response = await fetch('/api/verify-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Request failed with status ${response.status}`);
     }
 
-    setSubmitting(true);
-    try {
-      const result = await fetchTaskHandler(
-        quest.id,
-        auth.currentUser.uid,
-        walletAddress,
-        task,
-        userCredentials
-      );
-      toast[result.success ? "success" : "error"](result.message);
+    const verificationResult = await response.json();
 
-      if (result.success) {
-        const awardedPoints = task.points;
-        const updatedProgress: UserProgress = {
-          completedTasks: [
-            ...(userProgress?.completedTasks || []),
-            {
-              taskIndex,
-              proof: task.link,
-              awardedPoints,
-              completedAt: new Date().toISOString(),
-            },
-          ],
-          totalPoints: (userProgress?.totalPoints || 0) + awardedPoints,
-          userWallet: walletAddress,
-          status: "pending",
+    toast[verificationResult.verified ? 'success' : 'error'](verificationResult.message);
+
+    if (verificationResult.verified) {
+      const currentProgress = userProgress || {
+        tasksCompleted: [],
+        pointsCollected: 0,
+        walletAddress: userData.walletAddress,
+        status: 'pending',
+      };
+
+      // Prevent double completion of the same task
+      if (!currentProgress.tasksCompleted.some((t) => t.taskIndex === taskIndex)) {
+        const newTaskCompletion = {
+          taskIndex,
+          proof: verificationResult.proof || '',
+          awardedPoints: task.points,
+          completedAt: new Date().toISOString(),
         };
 
+        const updatedTasksCompleted = [...currentProgress.tasksCompleted, newTaskCompletion];
+        const updatedPoints = currentProgress.pointsCollected + task.points;
+
+        const updatedProgress: UserProgress = {
+          ...currentProgress,
+          tasksCompleted: updatedTasksCompleted,
+          pointsCollected: updatedPoints,
+        };
+
+        // Save updated progress to Firestore
         await setDoc(
-          doc(db, "quests", quest.id, "userProgress", auth.currentUser.uid),
-          updatedProgress
+          doc(db, "quests", quest.id, "userProgress", auth.currentUser!.uid),
+          updatedProgress,
+          { merge: true }
         );
+
         setUserProgress(updatedProgress);
+      } else {
+        toast.info("Task already completed.");
       }
-    } catch (error) {
-      console.error("Error submitting task:", error);
-      toast.error("Failed to submit task.");
-    } finally {
-      setSubmitting(false);
     }
-  };
+  } catch (error: any) {
+    console.error('Error submitting task:', error);
+    toast.error(`Failed to submit task: ${error.message || error}`);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   if (loading) {
+    console.log("DoQuestPage rendering loading state");
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Loading...</div>;
   }
 
   if (!quest) {
+    console.log("DoQuestPage rendering quest not found state");
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Quest not found.</div>;
   }
 
+  console.log("DoQuestPage rendering main content, quest:", quest);
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white max-w-2xl w-full p-8 rounded-lg shadow-lg">
@@ -146,72 +219,74 @@ export default function DoQuestPage() {
         <p className="text-gray-600 mb-4">{quest.description}</p>
         <p className="text-sm mb-2">Reward: {quest.reward} {quest.tokenName}</p>
         <p className="text-sm mb-4">Deadline: {new Date(quest.deadline).toLocaleDateString()}</p>
-        <p className="text-sm mb-4">Your Points: {userProgress?.totalPoints || 0}</p>
-
-        <ConnectWallet
-          onConnect={(address: string) => setWalletAddress(address)}
-          onVerified={(address: string) => setWalletAddress(address)}
-        />
-
-        <div className="form-control mb-4">
-          <label className="label text-black">Twitter ID (for verification)</label>
-          <input
-            type="text"
-            placeholder="Enter your Twitter ID"
-            value={userCredentials.twitterId || ""}
-            onChange={(e) => setUserCredentials({ ...userCredentials, twitterId: e.target.value })}
-            className="input input-bordered w-full bg-transparent"
-          />
-        </div>
-        <div className="form-control mb-4">
-          <label className="label text-black">Discord ID (for verification)</label>
-          <input
-            type="text"
-            placeholder="Enter your Discord ID"
-            value={userCredentials.discordId || ""}
-            onChange={(e) => setUserCredentials({ ...userCredentials, discordId: e.target.value })}
-            className="input input-bordered w-full bg-transparent"
-          />
-        </div>
+        <p className="text-sm mb-4">Your Points: {userProgress?.pointsCollected || 0}</p>
 
         <div className="space-y-4 mt-6">
           <h2 className="text-xl font-semibold text-gray-800">Tasks</h2>
-          {quest.tasks.map((task, index) => {
-            const isCompleted = userProgress?.completedTasks.some((t) => t.taskIndex === index);
+          {quest.tasks && quest.tasks.length > 0 ? (
+          quest.tasks.map((task, index) => {
+            const isCompleted = userProgress?.tasksCompleted.some((t) => t.taskIndex === index);
+            const isFollowTask = task.taskType.toLowerCase().includes("follow");
+
             return (
               <div key={index} className="border p-4 rounded-lg">
                 <h3 className="font-medium text-gray-800">{task.taskType}</h3>
-                <p className="text-sm">
-                  Link: <a href={task.link} target="_blank" className="text-blue-600 underline">{task.link}</a>
-                </p>
+                {isFollowTask ? (
+                  <p className="text-sm">
+                    Please follow the account:{" "}
+                    <a
+                      href={task.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {task.link}
+                    </a>
+                  </p>
+                ) : (
+                  <p className="text-sm">
+                    Link:{" "}
+                    <a
+                      href={task.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {task.link}
+                    </a>
+                  </p>
+                )}
                 <p className="text-sm">Points: {task.points}</p>
                 {isCompleted ? (
-                  <p className="text-green-600 font-medium">Completed!</p>
+                  <p className="text-green-600 font-semibold">Completed</p>
                 ) : (
                   <button
-                    className="mt-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     onClick={() => handleTaskSubmit(index, task)}
                     disabled={submitting}
+                    className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                   >
-                    {submitting ? "Verifying..." : "Verify Task"}
+                    {submitting ? "Submitting..." : "Verify Task"}
                   </button>
                 )}
               </div>
             );
-          })}
+          })
+        ) : (
+          <p>No tasks available.</p>
+        )}
+
         </div>
 
-        <Link href={`/quests/${quest.id}/claim`}>
-          <a className="mt-6 inline-block p-3 bg-black text-white rounded-lg hover:bg-gray-800">
-            Go to Claim Rewards
-          </a>
-        </Link>
-
-        <footer className="mt-8 text-center text-gray-600">
-          <p>© {new Date().getFullYear()} Cardano Hub Indonesia - All rights reserved</p>
-        </footer>
+        <div className="mt-6">
+          <Link
+            href="/quests"
+            className="inline-block px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          >
+            Back to Quests
+          </Link>
+        </div>
       </div>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="bottom-right" />
     </div>
   );
 }

@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { BsCheck2Circle } from "react-icons/bs";
 import ConnectWallet from "@/components/button/ConnectWallet";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { convertTwitterUsernamesToIds } from "@/utils/Socialhandler";
-import { doc, setDoc, collection as collectionRef } from "firebase/firestore";
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
+import { doc, setDoc, collection as collectionRef, getDoc, runTransaction } from "firebase/firestore";
 import { db, auth } from "@/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/router";
@@ -44,16 +45,12 @@ export default function CreateQuestPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
-  const [userCredentials, setUserCredentials] = useState<{
-    twitterId?: string;
-    discordId?: string;
-  }>({});
   const [twitterTaskModal, setTwitterTaskModal] = useState<{
     open: boolean;
     taskType: string;
     usernames: string;
     tweetUrl?: string;
-  }>({ open: false, taskType: "", usernames: "" });
+  }>({ open: false, taskType: "", usernames: "", tweetUrl: "" });
 
   const router = useRouter();
   const currentYear = new Date().getFullYear();
@@ -65,6 +62,13 @@ export default function CreateQuestPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    // Sync adminWalletAddress with walletAddress when wallet is connected
+    if (walletAddress) {
+      setForm((prev) => ({ ...prev, adminWalletAddress: walletAddress }));
+    }
+  }, [walletAddress]);
 
   const handleTaskChange = (
     index: number,
@@ -88,47 +92,35 @@ export default function CreateQuestPage() {
     }
   };
 
+  const handleTwitterUsernameChange = (usernames: string) => {
+    setTwitterTaskModal({ ...twitterTaskModal, usernames });
+  };
+
   const handleAddTwitterTask = async () => {
     const { taskType, usernames, tweetUrl } = twitterTaskModal;
 
     if (taskType === "Follow Twitter") {
       if (!usernames.trim()) {
-        toast.error("Please enter at least one Twitter username.");
+        toast.error("Please enter a Twitter username.");
         return;
       }
 
-      try {
-        const usernameList = usernames
-          .split(",")
-          .map((u) => u.trim())
-          .filter((u) => u);
-        const usernameToIdMap = await convertTwitterUsernamesToIds(usernameList);
-
-        const validMap: { [username: string]: string } = {};
-        for (const [username, id] of Object.entries(usernameToIdMap)) {
-          if (id) validMap[username] = id;
-          else toast.warn(`Username @${username} not found and will be skipped.`);
-        }
-
-        if (Object.keys(validMap).length === 0) {
-          toast.error("No valid Twitter usernames provided.");
-          return;
-        }
-
-        const link = JSON.stringify(validMap);
-        setForm({
-          ...form,
-          tasks: [...form.tasks, { taskType, link, points: 1 }],
-        });
-        setTwitterTaskModal({
-          open: false,
-          taskType: "",
-          usernames: "",
-          tweetUrl: "",
-        });
-      } catch (error: any) {
-        toast.error(`Failed to add Twitter task: ${error.message}`);
+      const username = usernames.trim().replace(/^@/, "");
+      if (!username) {
+        toast.error("Please enter a valid Twitter username.");
+        return;
       }
+
+      setForm({
+        ...form,
+        tasks: [...form.tasks, { taskType, link: username, points: 1 }],
+      });
+      setTwitterTaskModal({
+        open: false,
+        taskType: "",
+        usernames: "",
+        tweetUrl: "",
+      });
     } else {
       if (!tweetUrl?.trim()) {
         toast.error("Please enter a tweet URL.");
@@ -169,24 +161,28 @@ export default function CreateQuestPage() {
       toast.error("User not authenticated. Please sign in.");
       return;
     }
-    if (
-      !form.name ||
-      !form.description ||
-      !form.tokenPolicyId ||
-      !form.tokenName ||
-      !form.reward ||
-      !form.deadline ||
-      !form.adminWalletAddress || 
-      form.tasks.length === 0 ||
-      form.tasks.some((task) => !task.link)
-    ) {
-      toast.error("Please fill all fields, including task links and admin wallet.");
-      return;
-    }
 
     try {
+      console.log("Current User:", auth.currentUser);
+      const token = await auth.currentUser.getIdToken(true);
+      console.log("Auth Token:", token);
       setLoading(true);
       setStatus("Creating quest...");
+
+      if (
+        !form.name ||
+        !form.description ||
+        !form.tokenPolicyId ||
+        !form.tokenName ||
+        !form.reward ||
+        !form.deadline ||
+        !form.adminWalletAddress ||
+        form.tasks.length === 0 ||
+        form.tasks.some((task) => !task.link)
+      ) {
+        toast.error("Please fill all fields, including task links and admin wallet.");
+        return;
+      }
 
       const rewardNum = parseInt(form.reward);
       if (isNaN(rewardNum) || rewardNum < 0) {
@@ -194,47 +190,51 @@ export default function CreateQuestPage() {
         return;
       }
 
-      const questRef = doc(collectionRef(db, "quests"));
+      const counterRef = doc(db, "metadata", "questCounter");
+      let newQuestId: number;
+
+      await runTransaction(db, async (transaction) => {
+        console.log("Transaction started for counterRef:", counterRef.path);
+        const counterDoc = await transaction.get(counterRef);
+        console.log("Counter Doc Exists:", counterDoc.exists(), "Data:", counterDoc.data());
+        if (!counterDoc.exists()) {
+          console.log("Setting initial counter");
+          transaction.set(counterRef, { lastQuestId: 0 });
+          newQuestId = 1;
+        } else {
+          const lastQuestId = counterDoc.data().lastQuestId || 0;
+          newQuestId = lastQuestId + 1;
+          console.log("New Quest ID:", newQuestId);
+        }
+        transaction.update(counterRef, { lastQuestId: newQuestId });
+      });
+
+      const questRef = doc(db, "quests", newQuestId.toString());
       const questData = {
         ...form,
         reward: rewardNum,
         creatorUid: auth.currentUser.uid,
+        creatorWalletAddress: walletAddress || form.adminWalletAddress,
         status: "active",
         createdAt: new Date().toISOString(),
         startDate: new Date().toISOString(),
         endDate: form.deadline,
-        id: questRef.id,
+        id: newQuestId.toString(),
       };
 
+      console.log("Writing to questRef:", questRef.path, "Data:", questData);
       await setDoc(questRef, questData);
 
-      // Initialize reward pool
-      const initResponse = await fetch("/api/initialize-reward-pool", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questId: questRef.id,
-          tokenPolicyId: form.tokenPolicyId,
-          tokenName: form.tokenName,
-          reward: rewardNum,
-          adminWalletAddress: walletAddress,
-        }),
-      });
-
-      const initResult = await initResponse.json();
-      if (!initResponse.ok) {
-        throw new Error(initResult.error);
-      }
-
-      // Update quest with script address
-      await setDoc(questRef, { scriptAddress: initResult.scriptAddress }, { merge: true });
-
-      setStatus(`✅ Quest Created! ID: ${questRef.id}, Tx Hash: ${initResult.txHash}`);
-      router.push(`/quests/${questRef.id}/do`);
+      setStatus(`✅ Quest Created! ID: ${newQuestId}`);
+      router.push(`/quest/${newQuestId}/do`);
     } catch (err: any) {
       console.error("Error:", err);
       setStatus(`❌ Error: ${err.message}`);
-      toast.error(`Failed to create quest: ${err.message}`);
+      if (err.code === "permission-denied") {
+        toast.error("Permission denied: Please ensure you are signed in and authorized.");
+      } else {
+        toast.error(`Failed to create quest: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -331,10 +331,10 @@ export default function CreateQuestPage() {
               <input
                 type="text"
                 name="adminWalletAddress"
-                placeholder="Enter admin wallet address"
-                value={walletAddress}
-                onChange={handleChange}
+                placeholder="Connect wallet to set address"
+                value={form.adminWalletAddress}
                 className="input input-bordered w-full bg-transparent"
+                disabled
               />
             </div>
 
@@ -397,12 +397,6 @@ export default function CreateQuestPage() {
                 <button className="btn btn-primary" onClick={() => addTask("Visit Website")}>
                   Add Visit Website Task
                 </button>
-                <button className="btn btn-primary" onClick={() => addTask("Own NFT")}>
-                  Add Own NFT Task
-                </button>
-                <button className="btn btn-primary" onClick={() => addTask("Attend Event")}>
-                  Add Attend Event Task
-                </button>
               </div>
             </div>
 
@@ -457,15 +451,13 @@ export default function CreateQuestPage() {
             <div className="form-control">
               {twitterTaskModal.taskType === "Follow Twitter" ? (
                 <>
-                  <label className="label text-black">Twitter Usernames (comma-separated)</label>
-                  <textarea
-                    placeholder="e.g., user1,user2,user3"
+                  <label className="label text-black">Twitter Username</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., cardanohubindonesia"
                     value={twitterTaskModal.usernames}
-                    onChange={(e) =>
-                      setTwitterTaskModal({ ...twitterTaskModal, usernames: e.target.value })
-                    }
-                    className="textarea textarea-bordered w-full bg-transparent"
-                    rows={3}
+                    onChange={(e) => handleTwitterUsernameChange(e.target.value)}
+                    className="input input-bordered w-full bg-transparent"
                   />
                 </>
               ) : (

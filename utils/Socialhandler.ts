@@ -2,10 +2,7 @@ import axios from "axios";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/config";
 
-const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY;
-if (!TWITTER_API_IO_KEY) {
-  console.error("❌ TWITTER_API_IO_KEY is missing. Check your .env file or environment setup.");
-}
+const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY || "21d9ac51d9f94d19a4c04e4a2336b233";
 
 const twitterApiIoClient = axios.create({
   baseURL: "https://api.twitterapi.io/twitter",
@@ -36,7 +33,6 @@ export const fetchTwitterProfiles = async (usernames: string[]): Promise<Usernam
     .map((u) => u.trim().replace(/^@/, "").toLowerCase())
     .filter((u) => u);
 
-  // Check Firestore cache
   for (const username of cleanedUsernames) {
     const cacheDoc = await getDoc(doc(db, cachePath, username));
     if (cacheDoc.exists()) {
@@ -46,7 +42,6 @@ export const fetchTwitterProfiles = async (usernames: string[]): Promise<Usernam
     }
   }
 
-  // Fetch profiles from twitterapi.io for uncached usernames
   if (toFetch.length > 0) {
     try {
       for (const username of toFetch) {
@@ -64,7 +59,6 @@ export const fetchTwitterProfiles = async (usernames: string[]): Promise<Usernam
               following_count: user.following_count,
             };
             result[username] = profile;
-            // Cache in Firestore
             await setDoc(doc(db, cachePath, username), {
               ...profile,
               cachedAt: new Date().toISOString(),

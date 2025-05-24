@@ -1,24 +1,84 @@
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "@/config";
-import { Lucid, Blockfrost } from "lucid-cardano";
-import { arrayUnion, increment } from "firebase/firestore";
-import { initSync } from "lucid-cardano";
-import * as wasm from "cardano-multiplatform-lib-nodejs";
 import axios from "axios";
+import { doc, setDoc, arrayUnion, increment } from "firebase/firestore";
+import { db } from "@/config";
 
-const TWITTER_API_IO_KEY = "21d9ac51d9f94d19a4c04e4a2336b233"; 
-const TWITTER_API_IO_URL = "https://api.twitterapi.io/twitter/user/followings";
+const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY;
+const TWITTER_API_IO_BASE_URL = process.env.TWITTER_API_IO_BASE_URL;
 
-async function getUserFollowings(username, cursor = "") {
-  try {
-    const response = await axios.get(TWITTER_API_IO_URL, {
-      headers: { "X-API-Key": TWITTER_API_IO_KEY },
-      params: { userName: username, cursor },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching user followings from twitterapi.io:", error.response?.data || error.message);
-    throw new Error(`Failed to fetch followings: ${error.message}`);
+const twitterApiIoClient = axios.create({
+  baseURL: TWITTER_API_IO_BASE_URL,
+  headers: { "X-API-Key": TWITTER_API_IO_KEY },
+});
+
+async function getUserFollowings(username: string, cursor = "", retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`Fetching followings for username: ${username}, cursor: ${cursor}, attempt: ${i + 1}`);
+      const response = await twitterApiIoClient.get(`/${username}/followings`, {
+        params: { cursor },
+      });
+      console.log(`Followings API response:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching user followings:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      if (error.response?.status === 429 && i < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+        continue;
+      }
+      throw new Error(`Failed to fetch followings: ${error.message}`);
+    }
+  }
+}
+
+async function getTweetRetweeters(tweetId: string, cursor = "", retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`Fetching retweeters for tweetId: ${tweetId}, cursor: ${cursor}, attempt: ${i + 1}`);
+      const response = await twitterApiIoClient.get("/tweet/retweeters", {
+        params: { tweetId, cursor },
+      });
+      console.log(`Retweeters API response:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching tweet retweeters:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      if (error.response?.status === 429 && i < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+        continue;
+      }
+      throw new Error(`Failed to fetch retweeters: ${error.message}`);
+    }
+  }
+}
+
+async function getTweetLikers(tweetId: string, cursor = "", retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`Fetching likers for tweetId: ${tweetId}, cursor: ${cursor}, attempt: ${i + 1}`);
+      const response = await twitterApiIoClient.get("/tweet/likers", {
+        params: { tweetId, cursor },
+      });
+      console.log(`Likers API response:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching tweet likers:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      if (error.response?.status === 429 && i < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+        continue;
+      }
+      throw new Error(`Failed to fetch likers: ${error.message}`);
+    }
   }
 }
 
@@ -26,13 +86,10 @@ export async function fetchTaskHandler(
   questId: string,
   userId: string,
   walletAddress: string,
-  task: { taskType: string; link: string; points: number },
+  task: { taskType: string; link: string; points: number; index?: number },
   userCredentials: { twitterId?: string; discordId?: string; twitterUsername?: string }
 ) {
   try {
-    // Initialize WASM
-    initSync(wasm);
-
     let success = false;
     let message = "";
 
@@ -41,73 +98,90 @@ export async function fetchTaskHandler(
         if (!userCredentials.twitterUsername) {
           throw new Error("Twitter username not provided in userCredentials");
         }
-
-        const twitterIds = JSON.parse(task.link);
-        const targetUsernames = Object.keys(twitterIds).map(u => u.toLowerCase());
-
-        let allFollowings = [];
-        let cursor = "";
-        let hasNextPage = true;
-        while (hasNextPage) {
-          const data = await getUserFollowings(userCredentials.twitterUsername, cursor);
-          allFollowings = allFollowings.concat(data.followings || []);
-          hasNextPage = data.has_next_page;
-          cursor = data.next_cursor || "";
+        if (!task.link || typeof task.link !== "string") {
+          throw new Error("Invalid Twitter handle provided");
         }
-        success = allFollowings.some(user => 
-          targetUsernames.includes(user.username.toLowerCase())
-        );
-        message = success ? "Twitter follow verified" : "Twitter follow not verified";
-        break;
 
-      case "Own NFT":
-        const lucid = await Lucid.new(
-          new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", process.env.BLOCKFROST_API_KEY),
-          "Testnet"
-        );
-        const utxos = await lucid.utxosAt(walletAddress);
-        success = utxos.some((utxo) => utxo.assets[task.link] > 0);
-        message = success ? "NFT ownership verified" : "NFT not found in wallet";
-        break;
+        const targetUsername = task.link.trim().replace(/^@/, "");
+        if (!targetUsername.match(/^[a-zA-Z0-9_]{1,15}$/)) {
+          throw new Error("Invalid Twitter handle format");
+        }
 
-      case "Join Discord":
-        success = true; // Placeholder: Implement Discord API check
-        message = "Discord join verified";
+        let allFollowings: { username: string }[] = [];
+        let followCursor = "";
+        let hasNextFollowPage = true;
+
+        while (hasNextFollowPage) {
+          const followData = await getUserFollowings(userCredentials.twitterUsername, followCursor);
+          if (!followData || !Array.isArray(followData.followings)) {
+            throw new Error("Invalid followings data from API");
+          }
+          allFollowings = allFollowings.concat(followData.followings || []);
+          hasNextFollowPage = followData.has_next_page || false;
+          followCursor = followData.next_cursor || "";
+        }
+
+        success = allFollowings.some(
+          (user) => user.username.toLowerCase() === targetUsername.toLowerCase()
+        );
+        message = success
+          ? `Successfully verified follow for @${targetUsername}`
+          : `Please follow @${targetUsername} to complete this task`;
         break;
 
       case "Retweet Tweet":
       case "Like Tweet":
-        const tweetId = task.link.match(/status\/(\d+)/)?.[1];
-        if (tweetId) {
-          const endpoint = task.taskType === "Retweet Tweet" ? "retweets" : "likes";
-          const res = await fetch(
-            `https://api.twitter.com/2/tweets/${tweetId}/${endpoint}`,
-            {
-              headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` },
-            }
-          );
-          const tweetData = await res.json();
-          success = tweetData.data?.some((user: any) => user.id === userCredentials.twitterId);
-          message = success ? `${task.taskType} verified` : `${task.taskType} not verified`;
-        } else {
-          success = false;
-          message = "Invalid tweet URL";
+        if (!userCredentials.twitterUsername) {
+          throw new Error("Twitter username not provided in userCredentials");
         }
+
+        const tweetId = task.link.match(/status\/(\d+)/)?.[1];
+        if (!tweetId) {
+          throw new Error("Invalid tweet URL");
+        }
+
+        let allUsers: { username: string }[] = [];
+        let userCursor = "";
+        let hasNextUserPage = true;
+
+        if (task.taskType === "Retweet Tweet") {
+          while (hasNextUserPage) {
+            const retweetData = await getTweetRetweeters(tweetId, userCursor);
+            if (!retweetData || !Array.isArray(retweetData.users)) {
+              throw new Error("Invalid retweeters data from API");
+            }
+            allUsers = allUsers.concat(retweetData.users || []);
+            hasNextUserPage = retweetData.has_next_page || false;
+            userCursor = retweetData.next_cursor || "";
+          }
+        } else if (task.taskType === "Like Tweet") {
+          while (hasNextUserPage) {
+            const likeData = await getTweetLikers(tweetId, userCursor);
+            if (!likeData || !Array.isArray(likeData.users)) {
+              throw new Error("Invalid likers data from API");
+            }
+            allUsers = allUsers.concat(likeData.users || []);
+            hasNextUserPage = likeData.has_next_page || false;
+            userCursor = retweetData.next_cursor || "";
+          }
+        }
+
+        success = allUsers.some(
+          (user) => user.username.toLowerCase() === userCredentials.twitterUsername.toLowerCase()
+        );
+        message = success
+          ? `${task.taskType} verified`
+          : `Please ${task.taskType.toLowerCase()} to complete this task`;
+        break;
+
+      case "Join Discord":
+        success = true; // Placeholder
+        message = "Discord join verified";
         break;
 
       case "Visit Website":
-        success = true; // Placeholder: Implement signed message or API check
+        success = true; // Placeholder
         message = "Website visit verified";
-        break;
-
-      case "Attend Event":
-        const lucidEvent = await Lucid.new(
-          new Blockfrost("https://cardano-testnet.blockfrost.io/api/v0", process.env.BLOCKFROST_API_KEY),
-          "Testnet"
-        );
-        const utxosEvent = await lucidEvent.utxosAt(walletAddress);
-        success = utxosEvent.some((utxo) => utxo.assets[task.link] > 0);
-        message = success ? "Event attendance verified" : "Attendance NFT not found";
         break;
 
       default:
@@ -115,38 +189,60 @@ export async function fetchTaskHandler(
         message = "Unsupported task type";
     }
 
-    if (success) {
-      // Update Firestore
-      const userProgressRef = doc(db, "quests", questId, "userProgress", userId);
-      await updateDoc(userProgressRef, {
-        completedTasks: arrayUnion({
+    return { success, message };
+  } catch (error: any) {
+    console.error("fetchTaskHandler error:", {
+      taskType: task.taskType,
+      link: task.link,
+      errorMessage: error.message,
+      stack: error.stack,
+    });
+    return { success: false, message: `Verification failed: ${error.message}` };
+  }
+}
+
+export async function updateUserProgress(
+  questId: string,
+  userId: string,
+  walletAddress: string,
+  task: { taskType: string; link: string; points: number; index?: number }
+) {
+  try {
+    const userProgressRef = doc(db, "quests", questId, "userProgress", userId);
+    await setDoc(
+      userProgressRef,
+      {
+        tasksCompleted: arrayUnion({
           taskIndex: task.index,
           proof: task.link,
           awardedPoints: task.points,
           completedAt: new Date().toISOString(),
         }),
-        totalPoints: increment(task.points),
-        userWallet: walletAddress,
+        pointsCollected: increment(task.points),
+        walletAddress: walletAddress,
         status: "pending",
-      });
+      },
+      { merge: true }
+    );
 
-      // Add to reward pool
-      const questRef = doc(db, "quests", questId);
-      const questSnap = await getDoc(questRef);
-      const questData = questSnap.data();
-      await fetch("/api/add-eligible", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questId,
-          address: walletAddress,
-          amount: task.points,
-        }),
-      });
+    const response = await fetch("/api/add-eligible", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        questId,
+        address: walletAddress,
+        amount: task.points,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to add to eligible pool");
     }
 
-    return { success, message };
+    return { success: true, message: "Progress updated and eligibility recorded" };
   } catch (error: any) {
-    return { success: false, message: error.message };
+    console.error("Error updating user progress:", error);
+    return { success: false, message: `Failed to update progress: ${error.message}` };
   }
 }
