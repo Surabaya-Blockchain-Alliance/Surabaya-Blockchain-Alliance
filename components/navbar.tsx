@@ -24,8 +24,8 @@ const menuItems: MenuItem[] = [
 
     ],
   },
-  { label: "Quests", href: "Quest" },
-  { label: "Events", href: "/Event" },
+  { label: "Quests", href: "/quest" },
+  { label: "Events", href: "/evet" },
   { label: "Partnerships", href: "#/" },
 ];
 
