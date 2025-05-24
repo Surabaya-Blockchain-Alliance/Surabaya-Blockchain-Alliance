@@ -24,14 +24,13 @@ export default function BlogPost() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const router = useRouter();
-  const { id } = router.query; // Changed from slug to id
+  const { id } = router.query; 
 
   useEffect(() => {
     const fetchPostAndComments = async () => {
       if (!id) return;
 
       try {
-        // Query the blogposts collection using postNumber instead of slug
         const postsQuery = query(collection(db, 'blogposts'), where('postNumber', '==', parseInt(id as string)));
         const postsSnapshot = await getDocs(postsQuery);
         if (!postsSnapshot.empty) {
@@ -74,7 +73,7 @@ export default function BlogPost() {
     fetchPostAndComments();
 
     return () => unsubscribe();
-  }, [id]); // Changed from slug to id
+  }, [id]); 
 
   const handleLike = async () => {
     if (!user) {

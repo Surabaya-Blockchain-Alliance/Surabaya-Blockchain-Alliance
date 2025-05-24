@@ -17,6 +17,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "utils/upload.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "utils/upload.js", "pages/api/verify-task.js", "pages/api/verify-task.js", "pages/api/web3/finalize-quest.js", "pages/api/web3/add-eligible.js", "pages/api/web3/init-pools.js"],
   "exclude": ["node_modules"]
 }

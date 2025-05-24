@@ -26,7 +26,7 @@ export default function ProfileSetup() {
         router.replace('/signin');
       } else {
         setUser(firebaseUser);
-        console.log("User authenticated before wallet connect:", firebaseUser); // Log auth and uid here
+        console.log("User authenticated before wallet connect:", firebaseUser); 
       }
       setCheckingAuth(false);
     });

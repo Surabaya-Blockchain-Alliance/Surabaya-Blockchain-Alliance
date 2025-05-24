@@ -1,8 +1,17 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/config";
+import { Teko } from "next/font/google";
 import { useRouter } from "next/router";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
+import { BsArrowLeft } from "react-icons/bs";
+import QuestCard from "@/components/card/quests";
+
+const geistTeko = Teko({
+  variable: "--font-geist-teko",
+  subsets: ["latin"],
+});
 
 interface Quest {
   id: string;
@@ -12,13 +21,31 @@ interface Quest {
   deadline: string;
   status: string;
   creator: string;
+  avatars?: string;
+  media?: string[];
 }
 
 export default function QuestsPage() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.type = "text/css";
+    styleSheet.innerText = `
+      @keyframes bg-scrolling-reverse {
+        100% { background-position: -50px -50px; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchQuests = async () => {
@@ -31,6 +58,7 @@ export default function QuestsPage() {
         setQuests(questsData);
       } catch (err) {
         console.error("Error fetching quests:", err);
+        setError("Failed to load quests.");
       } finally {
         setLoading(false);
       }
@@ -39,80 +67,79 @@ export default function QuestsPage() {
   }, []);
 
   const handleQuestClick = (questId: string) => {
-    router.push(`/quest/${questId}`);
+    router.push(`/quest/${questId}/do`);
   };
 
+  const bgImage =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
+
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full h-screen text-gray-800">
-        <div
-          className="flex justify-between items-start gap-5"
-          style={{
-            fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            animation: 'bg-scrolling-reverse 0.92s linear infinite',
-          }}
-        >
-          <div
-            className="bg-white w-full max-w-3xl shrink-0 shadow-2xl py-5 px-10 overflow-y-auto"
-            style={{ maxHeight: "100vh" }}
+    <div
+      className="relative min-h-screen flex flex-col text-black overflow-hidden"
+      style={{
+        fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
+        backgroundImage: `url(${bgImage})`,
+        backgroundRepeat: "repeat",
+        animation: "bg-scrolling-reverse 0.92s linear infinite",
+        backgroundPosition: "0 0",
+      }}
+    >
+      <div className="absolute inset-0 bg-white/70 z-0"></div>
+
+      <Navbar />
+      <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <button
+            onClick={() => router.back()}
+            className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center"
           >
-            <div className="flex justify-between items-center">
-              <img src="/img/logo.png" alt="logo" width={200} />
+            <BsArrowLeft className="text-xs" />
+            <span className={`font-semibold ${geistTeko.variable}`}>Back</span>
+          </button>
+
+          <h1 className="text-5xl font-bold leading-tight">
+            <span className="text-gray-900">Available</span>{" "}
+            <span className="text-blue-600">Quests</span>
+          </h1>
+          <p className="text-gray-600 font-medium text-lg">
+            Explore and join quests to earn points!
+          </p>
+
+          {loading && (
+            <div className="flex justify-center">
+              <svg
+                className="animate-spin h-8 w-8 text-gray-600"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
+              </svg>
             </div>
+          )}
 
-            <div className="pt-16 pb-5">
-              <h1 className="text-3xl font-extrabold">Available Quests</h1>
-              <p className="text-sm font-medium">Explore and join quests to earn points!</p>
+          {error && (
+            <div className="alert alert-error mt-2 text-red-600 font-semibold">
+              <span>{error}</span>
             </div>
+          )}
 
-            {loading ? (
-              <p>Loading quests...</p>
-            ) : quests.length === 0 ? (
-              <p>No quests available.</p>
-            ) : (
-              <div className="space-y-4">
-                {quests.map((quest) => (
-                  <div
-                    key={quest.id}
-                    className="border p-4 rounded-lg cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleQuestClick(quest.id)}
-                  >
-                    <h2 className="text-xl font-semibold">{quest.name}</h2>
-                    <p className="text-sm">{quest.description}</p>
-                    <p className="text-sm">Reward: {quest.reward} tokens</p>
-                    <p className="text-sm">Deadline: {new Date(quest.deadline).toLocaleDateString()}</p>
-                    <p className="text-sm">Status: {quest.status}</p>
-                    <p className="text-sm text-blue-600">Quest ID: {quest.id}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+          {!loading && !error && quests.length === 0 && (
+            <p className="text-gray-600">No quests available.</p>
+          )}
 
-            <footer className="footer bg-white text-black items-center px-10 py-4 border-t mt-4">
-              <aside className="grid-flow-col items-center">
-                <img src="/img/emblem.png" alt="" width={46} />
-                <p>© {currentYear} - All rights reserved</p>
-              </aside>
-            </footer>
-          </div>
-
-          <div className="bg-transparent text-center p-48">
-            <h1 className="text-4xl font-semibold">
-              <span className="text-blue-800">Cardano Hub</span>{" "}
-              <span className="text-red-600">Indonesia</span>
-            </h1>
-            <DotLottieReact
-              src="https://lottie.host/7b819196-d55f-494b-b0b1-c78b39656bfe/RD0XuFNO9P.lottie"
-              loop
-              autoplay
-              style={{ width: "100%", maxWidth: "700px", margin: "0 auto" }}
-            />
-            <p className="text-lg font-medium">
-              Join quests and earn rewards!
-            </p>
-          </div>
+          {!loading && !error && quests.length > 0 && (
+            <QuestCard quests={quests} onQuestClick={handleQuestClick} />
+          )}
         </div>
-      </div>
+      </main>
+     <Footer/>
     </div>
   );
 }
