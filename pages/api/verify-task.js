@@ -1,20 +1,13 @@
 import axios from "axios";
-require('dotenv').config(); // Load environment variables
 
-// Environment variables
-const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY;
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const REDIRECT_URI = "http://localhost:3000/api/connect/discord/callback";
+const TWITTER_API_IO_KEY = process.env.TWITTER_API_IO_KEY as string;
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN as string;
 
-// Twitter API client
 const twitterClient = axios.create({
   baseURL: "https://api.twitterapi.io/twitter",
   headers: { "X-API-Key": TWITTER_API_IO_KEY },
 });
 
-// Discord API client (for bot token)
 const discordClient = axios.create({
   baseURL: "https://discord.com/api",
   headers: {
@@ -23,11 +16,9 @@ const discordClient = axios.create({
   },
 });
 
-// Store visited links
 const visitedLinks = {};
 
-// Main handler for verification tasks
-async function verificationHandler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -42,7 +33,6 @@ async function verificationHandler(req, res) {
     roleId,
     userId,
     link,
-    accessToken, // Added for OAuth2-based Discord verification
   } = req.body;
 
   if (!type) {
@@ -109,21 +99,11 @@ async function verificationHandler(req, res) {
 
     if (type === "join_discord") {
       if (!discordUserId || !guildId || !roleId) {
-        return res.status(400).json({ error: "Missing discordUserId, guildId, or roleId for Discord verification" });
+        return res.status(400).json({ error: "Missing discordUserId, guildId or roleId for Discord verification" });
       }
 
       try {
-        let response;
-        if (accessToken) {
-          // OAuth2-based verification
-          response = await axios.get(`https://discord.com/api/users/@me/guilds/${guildId}/member`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-        } else {
-          // Bot token-based verification
-          response = await discordClient.get(`/guilds/${guildId}/members/${discordUserId}`);
-        }
-
+        const response = await discordClient.get(`/guilds/${guildId}/members/${discordUserId}`);
         const member = response.data;
 
         if (!member) {
@@ -187,72 +167,4 @@ async function verificationHandler(req, res) {
     console.error("Verification error:", error.message);
     return res.status(500).json({ error: "Verification error: " + error.message });
   }
-}
-
-// Discord OAuth2 callback handler
-async function discordCallbackHandler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { code } = req.query;
-
-  if (!code) {
-    return res.status(400).json({ error: "Missing authorization code" });
-  }
-
-  try {
-    // Exchange code for access token
-    const tokenResponse = await axios.post(
-      "https://discord.com/api/oauth2/token",
-      new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: DISCORD_CLIENT_SECRET,
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: REDIRECT_URI,
-      }),
-      {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      }
-    );
-
-    const { access_token, refresh_token, expires_in } = tokenResponse.data;
-
-    // Optionally fetch user data
-    const userResponse = await axios.get("https://discord.com/api/users/@me", {
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
-    const discordUserId = userResponse.data.id;
-
-    // Fetch user guilds
-    const guildsResponse = await axios.get("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
-    const guilds = guildsResponse.data;
-
-    // Store access token securely (e.g., in a database) or return it
-    // For simplicity, return it in the response (not recommended for production)
-    return res.status(200).json({
-      accessToken: access_token,
-      refreshToken: refresh_token,
-      expiresIn: expires_in,
-      discordUserId,
-      guilds,
-      message: "OAuth2 authorization successful. Use accessToken for join_discord verification.",
-    });
-  } catch (error) {
-    console.error("OAuth2 error:", error.message);
-    return res.status(500).json({ error: "OAuth2 error: " + error.message });
-  }
-}
-
-// Export handlers (adjust based on your framework, e.g., Next.js or Express)
-export default async function handler(req, res) {
-  const path = req.url || req.path;
-
-  if (path.includes("/api/connect/discord/callback")) {
-    return discordCallbackHandler(req, res);
-  }
-  return verificationHandler(req, res);
 }
