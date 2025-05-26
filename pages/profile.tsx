@@ -104,16 +104,18 @@ export default function ProfilePage() {
     }
   };
 
-  const currentYear = new Date().getFullYear();
   if (checkingAuth || loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="w-full h-screen text-gray-800">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      <Navbar /> {/* ✅ Navbar added */}
+
+      <main className="flex-grow w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 p-4">
+          {/* Left Column: Profile */}
+          <div className="bg-white w-full max-w-xl shadow-2xl py-5 px-10">
             <div className="flex justify-between items-center">
               <LogoIcon />
               <Link href="/" className="text-sm text-black">Go to Dashboard</Link>
@@ -178,16 +180,15 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="h-screen w-full bg-white shadow-xl p-6">
-            <div className="flex flex-col h-full space-y-6">
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
-                <EventCard />
-              </div>
-            </div>
+          {/* Right Column: Events */}
+          <div className="bg-white shadow-xl p-6 h-fit">
+            <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
+            <EventCard />
           </div>
         </div>
-      </div>
+      </main>
+
+      <Footer /> 
     </div>
   );
 }

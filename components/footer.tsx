@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
                     <h6 className="footer-title">Community</h6>
                     {[
                         { name: "About Us", href: "/about" },
-                        { name: "Read Docs", href: process.env.URL_READ_DOCS }
+                        { name: "Read Docs", href: "https://comunity-node.gitbook.io/cardanohubindonesia" }
                     ].map((service) => (
                         <a key={service.name} href={service.href} className="link link-hover">
                             {service.name}
@@ -32,9 +32,8 @@ const Footer: React.FC = () => {
                 <nav>
                     <h6 className="footer-title">Extras</h6>
                     {[
-                        { name: "Quests", href: "/quests" },
-                        { name: "Events", href: "/events" },
-                        { name: "Partnerships", href: "/partnerships" }
+                        { name: "Quests", href: "/quest" },
+                        { name: "Events", href: "/Event" },
                     ].map((item) => (
                         <a key={item.name} href={item.href} className="link link-hover">
                             {item.name}

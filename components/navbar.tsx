@@ -19,14 +19,15 @@ const menuItems: MenuItem[] = [
     label: "Community",
     subMenu: [
       { label: "About", href: "#", description: "Learn more about our community" },
-      { label: "Read Docs", href: "#", description: "Find documentation on how to get started" },
+      { label: "Read Docs", href: "https://comunity-node.gitbook.io/cardanohubindonesia", description: "Find documentation on how to get started" },
       { label: "Create Article", href: "/blogpost/create", description: "Start writing your blog post!" }, 
 
     ],
   },
   { label: "Quests", href: "/quest" },
-  { label: "Events", href: "/event" },
-  { label: "Partnerships", href: "#/" },
+  { label: "Events", href: "/Event" },
+  { label: "Contact Us", href: "/Contact-Us" },
+
 ];
 
 const Navbar: React.FC = () => {
