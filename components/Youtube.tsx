@@ -17,22 +17,15 @@ interface Video {
 
 const videos: Video[] = [
   {
-    title: "Introduction to Our Project",
+    title: "Create Account and implement wallet as Sign in",
     videoId: "U5KIThytunI",
-    description: "Learn about our mission to power the decentralized future.",
-    publishedAt: "2025-05-20T12:00:00Z",
+    description: "CARDANO HUB INDONESIA CONNECT WALLET TUTORIAL, Starting login and join as decentral Users",
   },
   {
-    title: "Airdrop Tutorial",
-    videoId: "xyz789", // Replace with actual ID
-    description: "Step-by-step guide to participating in our airdrop.",
+    title: "Membangun ecosystem web 3 khususnya Cardano di Indonesia",
+    videoId: "o7NRQjCxMLs", 
+    description: "Surabaya Blockchain Alliance & Cardano: Membangun Ekosistem Blockchaindi Indonesia Timur",
     publishedAt: "2025-05-22T12:00:00Z",
-  },
-  {
-    title: "Community AMA",
-    videoId: "qwe456", // Replace with actual ID
-    description: "Join our latest AMA to hear from the team and community.",
-    publishedAt: "2025-05-25T12:00:00Z",
   },
 ];
 
