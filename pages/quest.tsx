@@ -70,6 +70,15 @@ export default function QuestsPage() {
     router.push(`/quest/${questId}/do`);
   };
 
+  // Check if any quest is active (not past deadline and not "end" status)
+  const hasActiveQuests = quests.some((quest) => {
+    const deadlineDate = new Date(quest.deadline);
+    const currentDate = new Date();
+    const isNotPastDeadline = deadlineDate >= currentDate;
+    const isNotEnded = quest.status.toLowerCase() !== "end";
+    return isNotPastDeadline && isNotEnded;
+  });
+
   const bgImage =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
 
@@ -89,13 +98,15 @@ export default function QuestsPage() {
       <Navbar />
       <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
         <div className="max-w-6xl mx-auto space-y-6">
-          <button
-            onClick={() => router.push("/")}
-            className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center"
-          >
-            <BsArrowLeft className="text-xs" />
-            <span className={`font-semibold ${geistTeko.variable}`}>Back to Home</span>
-          </button>
+          {hasActiveQuests && (
+            <button
+              onClick={() => router.push("/")}
+              className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center"
+            >
+              <BsArrowLeft className="text-xs" />
+              <span className={`font-semibold ${geistTeko.variable}`}>Back to Home</span>
+            </button>
+          )}
 
           <h1 className="text-5xl font-bold leading-tight">
             <span className="text-gray-900">Available</span>{" "}
@@ -139,7 +150,7 @@ export default function QuestsPage() {
           )}
         </div>
       </main>
-     <Footer/>
+      <Footer />
     </div>
   );
 }

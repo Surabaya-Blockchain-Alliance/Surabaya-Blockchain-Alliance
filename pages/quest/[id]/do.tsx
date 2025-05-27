@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore"; // Added getDocs and collection
 import { db, auth } from "@/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { ToastContainer, toast } from "react-toastify";
@@ -66,6 +66,9 @@ export default function DoQuestPage() {
   const [quest, setQuest] = useState<Quest | null>(null);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [totalPoints, setTotalPoints] = useState<number>(0); // New state for total points across all users
+  const [eligiblePoints, setEligiblePoints] = useState<number>(0); // New state for user's eligible points
+  const [isQuestExpired, setIsQuestExpired] = useState<boolean>(false); // New state for quest expiration
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authReady, setAuthReady] = useState(false);
@@ -98,15 +101,22 @@ export default function DoQuestPage() {
 
     try {
       console.time("fetchQuestAndUserData");
-      const [questDoc, userDoc, progressDoc] = await Promise.all([
+      const [questDoc, userDoc, progressDoc, progressSnapshot] = await Promise.all([
         getDoc(doc(db, "quests", id)),
         getDoc(doc(db, "users", auth.currentUser.uid)),
         getDoc(doc(db, "quests", id, "userProgress", auth.currentUser.uid)),
+        getDocs(collection(db, "quests", id, "userProgress")), // Fetch all userProgress
       ]);
 
       if (questDoc.exists()) {
         const questData = { id: questDoc.id, ...questDoc.data(), tasks: questDoc.data().tasks || [] } as Quest;
         setQuest(questData);
+
+        // Check if quest is expired
+        const deadlineDate = new Date(questData.deadline);
+        const currentDate = new Date();
+        const isExpired = deadlineDate < currentDate || questData.status.toLowerCase() === "end";
+        setIsQuestExpired(isExpired);
       } else {
         setError("Quest not found.");
         setLoading(false);
@@ -136,6 +146,14 @@ export default function DoQuestPage() {
           status: "pending",
         });
       }
+
+      // Calculate total points across all users
+      const total = progressSnapshot.docs.reduce((sum, doc) => {
+        const data = doc.data() as UserProgress;
+        return sum + (data.pointsCollected || 0);
+      }, 0);
+      setTotalPoints(total);
+
       console.timeEnd("fetchQuestAndUserData");
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -150,6 +168,18 @@ export default function DoQuestPage() {
       fetchQuestAndUserData();
     }
   }, [fetchQuestAndUserData, authReady]);
+
+  // Calculate eligible points whenever quest or userProgress changes
+  useEffect(() => {
+    if (quest && userProgress && totalPoints > 0) {
+      const userPoints = userProgress.pointsCollected || 0;
+      const proportion = userPoints / totalPoints;
+      const eligible = proportion * quest.reward;
+      setEligiblePoints(Number(eligible.toFixed(2))); // Round to 2 decimal places
+    } else {
+      setEligiblePoints(0);
+    }
+  }, [quest, userProgress, totalPoints]);
 
   const verifyTask = async (task: Task, taskIndex: number): Promise<{ verified: boolean; message: string; proof?: string }> => {
     if (!userData || !auth.currentUser) {
@@ -283,6 +313,11 @@ export default function DoQuestPage() {
       return;
     }
 
+    if (isQuestExpired) {
+      toast.error("This quest has expired and cannot be completed.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const verificationResult = await verifyTask(task, taskIndex);
@@ -320,6 +355,14 @@ export default function DoQuestPage() {
           );
 
           setUserProgress(updatedProgress);
+
+          // Recalculate total points after updating user progress
+          const progressSnapshot = await getDocs(collection(db, "quests", quest.id, "userProgress"));
+          const total = progressSnapshot.docs.reduce((sum, doc) => {
+            const data = doc.data() as UserProgress;
+            return sum + (data.pointsCollected || 0);
+          }, 0);
+          setTotalPoints(total);
         } else {
           toast.info("Task already completed.");
         }
@@ -333,6 +376,11 @@ export default function DoQuestPage() {
   };
 
   const handleTaskRedirect = (task: Task) => {
+    if (isQuestExpired) {
+      toast.error("This quest has expired and cannot be accessed.");
+      return;
+    }
+
     const { taskType, link } = task;
     switch (taskType.toLowerCase()) {
       case "follow twitter":
@@ -456,14 +504,22 @@ export default function DoQuestPage() {
 
         {/* Task Section */}
         <div className="bg-white max-w-3xl w-full p-8 rounded-xl shadow-md">
+          {isQuestExpired ? (
+            <div className="alert alert-error mb-4 text-red-600 font-semibold">
+              This quest has expired and can no longer be completed.
+            </div>
+          ) : null}
           <p className="text-black text-sm mb-2">
             Reward: {quest.reward} {quest.tokenName}
           </p>
           <p className="text-black text-sm mb-2">
             Deadline: {new Date(quest.deadline).toLocaleDateString()}
           </p>
-          <p className="text-black text-sm mb-4">
+          <p className="text-black text-sm mb-2">
             Your Points: {userProgress?.pointsCollected || 0}
+          </p>
+          <p className="text-black text-sm mb-4">
+            Eligible Reward: {eligiblePoints} {quest.tokenName} (based on {userProgress?.pointsCollected || 0} / {totalPoints} total points)
           </p>
 
           <div className="space-y-4 mt-6">
@@ -500,6 +556,7 @@ export default function DoQuestPage() {
                         <button
                           onClick={() => handleTaskRedirect(task)}
                           className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors"
+                          disabled={isQuestExpired}
                         >
                           {isTwitterTask
                             ? "Go to Twitter"
@@ -516,9 +573,11 @@ export default function DoQuestPage() {
                         <button
                           onClick={() => handleTaskSubmit(index, task)}
                           disabled={
+                            isQuestExpired ||
                             submitting ||
                             (isTwitterTask && !userData?.twitterUsername) ||
-                            (isDiscordTask && !userData?.discordUsername)
+                            (isDiscordTask && !userData?.discordUsername) ||
+                            (isVisitTask && !userData?.walletAddress)
                           }
                           className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
                         >
