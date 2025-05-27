@@ -90,11 +90,11 @@ export default function QuestsPage() {
       <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
         <div className="max-w-6xl mx-auto space-y-6">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push("/")}
             className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center"
           >
             <BsArrowLeft className="text-xs" />
-            <span className={`font-semibold ${geistTeko.variable}`}>Back</span>
+            <span className={`font-semibold ${geistTeko.variable}`}>Back to Home</span>
           </button>
 
           <h1 className="text-5xl font-bold leading-tight">

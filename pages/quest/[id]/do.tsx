@@ -437,7 +437,7 @@ export default function DoQuestPage() {
         <div className="bg-white max-w-3xl w-full p-8 rounded-xl shadow-2xl mb-6">
           <div className="flex justify-between items-center mb-6">
             <img src="/img/logo.png" alt="Cardano Hub Indonesia" className="h-full" width={130} />
-            <Link href="/quests" className="bg-black rounded-lg text-white px-3 py-1.5 text-xs">
+            <Link href="/quest" className="bg-black rounded-lg text-white px-3 py-1.5 text-xs">
               Back to Quests
             </Link>
           </div>

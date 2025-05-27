@@ -108,7 +108,7 @@ export default function FinalizeQuestPage() {
       }
 
       toast.success(result.message);
-      router.push(`/quests/${questId}`);
+      router.push(`/quest/${questId}`);
     } catch (error: any) {
       toast.error(`Failed to finalize quest: ${error.message}`);
     } finally {

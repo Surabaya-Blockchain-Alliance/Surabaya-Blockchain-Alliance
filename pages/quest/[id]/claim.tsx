@@ -183,7 +183,7 @@ export default function ClaimQuestPage() {
         );
         setUserProgress({ ...userProgress, status: "rewarded", walletAddress });
         toast.success(`Reward claimed! Tx Hash: ${result.txHash}`);
-        setTimeout(() => router.push("/quests"), 2000);
+        setTimeout(() => router.push("/quest"), 2000);
       } else {
         throw new Error(result.error || "Claim failed.");
       }
