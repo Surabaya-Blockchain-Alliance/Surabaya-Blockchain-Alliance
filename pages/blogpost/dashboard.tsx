@@ -93,7 +93,7 @@ export default function BlogDashboard() {
       if (firebaseUser) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userSnap = await getDoc(userDocRef);
-        let fetchedUsername = userSnap.exists() ? userSnap.data().username : firebaseUser.displayName || 'Anonymous';
+        const fetchedUsername = userSnap.exists() ? userSnap.data().username : firebaseUser.displayName || 'Anonymous';
         console.log('Logged-in user UID:', firebaseUser.uid);
         console.log('Fetched username:', fetchedUsername);
         console.log('Firebase displayName:', firebaseUser.displayName);
