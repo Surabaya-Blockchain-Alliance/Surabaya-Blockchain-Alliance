@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '@/config';
+import Link from "next/link";
 import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/navbar';

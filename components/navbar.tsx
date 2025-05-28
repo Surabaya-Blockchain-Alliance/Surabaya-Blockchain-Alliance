@@ -5,9 +5,9 @@ import { MeshProvider } from "@meshsdk/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import LogoIcon from "./LogoIcon";
-import { BsArrowRight, BsGear } from "react-icons/bs"; // Added BsGear for gear icon
-import { auth } from "../config"; // Import Firebase auth
-import { onAuthStateChanged } from "firebase/auth"; // Import Firebase auth state listener
+import { BsArrowRight, BsGear } from "react-icons/bs";
+import { auth } from "../config"; 
+import { onAuthStateChanged } from "firebase/auth";
 
 interface MenuItem {
   label: string;
