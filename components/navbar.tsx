@@ -22,7 +22,7 @@ const menuItems: MenuItem[] = [
     subMenu: [
       { label: "About", href: "/about", description: "Learn more about our community" },
       { label: "Read Docs", href: "https://comunity-node.gitbook.io/cardanohubindonesia", description: "Find documentation on how to get started" },
-      { label: "Create Article", href: "/blogpost/create", description: "Start writing your blog post!" }, 
+      { label: "Article", href: "/blogpost/dashboard", description: "see and create community article" }, 
     ],
   },
   { label: "Quests", href: "/quest" },
@@ -33,8 +33,6 @@ const menuItems: MenuItem[] = [
 const Navbar: React.FC = () => {
   const router = useRouter();
   const [user, setUser] = useState(null); // State to track user login
-
-  // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
