@@ -295,7 +295,7 @@ export default function EventDetailsPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           <Link
             className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center hover:text-blue-600 transition-colors"
-            href="/join/Event"
+            href="/Event"
           >
             <BsArrowLeft className="text-sm" />
             <span className={`font-semibold ${geistTeko.variable}`}>Back to Events</span>
