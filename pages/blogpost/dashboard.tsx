@@ -303,10 +303,14 @@ export default function BlogDashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">You haven't created any posts yet. <a href="/blogpost/create" className="text-blue-500 hover:underline">Create one now!</a></p>
+                <Link href="/blogpost/create">
+                  <a className="text-blue-500 hover:underline">Create one now!</a>
+                </Link>
               )
             ) : (
-              <p className="text-gray-500">Sign in to view your posts. <a href="/signin" className="text-blue-500 hover:underline">Sign in now!</a></p>
+                <Link href="/signin">
+                  <a className="text-blue-500 hover:underline">Sign in now!</a>
+                </Link>
             )}
           </div>
         </div>
