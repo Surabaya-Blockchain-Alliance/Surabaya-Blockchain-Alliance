@@ -134,11 +134,6 @@ export default function ProfilePage() {
                   />
                 </div>
               )}
-
-              <div className="flex justify-between mt-4">
-                <p className="font-semibold">Points Collected:</p>
-                <p className="text-green-600">{userData.pointsCollected} Points</p>
-              </div>
             </div>
 
             <div className="py-4 space-y-2">
@@ -149,10 +144,6 @@ export default function ProfilePage() {
               <div className="flex justify-between">
                 <p className="font-semibold">Discord:</p>
                 <p className="text-gray-700">{userData.discord || 'Not connected'}</p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold">Telegram:</p>
-                <p className="text-gray-700">{userData.telegram || 'Not connected'}</p>
               </div>
               <div className="flex justify-between">
                 <p className="font-semibold">Wallet Address:</p>

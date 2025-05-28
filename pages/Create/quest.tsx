@@ -4,12 +4,19 @@ import ConnectWallet from "@/components/button/ConnectWallet";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
-import { doc, setDoc, collection as collectionRef, getDoc, runTransaction } from "firebase/firestore";
+import { doc, setDoc, collection as collectionRef, getDocs, runTransaction } from "firebase/firestore";
 import { db, auth } from "@/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/router";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { BsArrowLeft } from "react-icons/bs"; 
+import { Teko } from "next/font/google";
+
+const geistTeko = Teko({
+  variable: "--font-geist-teko",
+  subsets: ["latin"],
+});
 
 interface Task {
   taskType: string;
@@ -26,6 +33,18 @@ interface FormState {
   tokenPolicyId: string;
   tokenName: string;
   scriptAddress: string;
+}
+
+interface Quest {
+  id: string;
+  name: string;
+  description: string;
+  reward: string;
+  deadline: string;
+  status: string;
+  creator: string;
+  avatars?: string;
+  media?: string[];
 }
 
 export default function CreateQuestPage() {
@@ -51,9 +70,37 @@ export default function CreateQuestPage() {
     usernames: string;
     tweetUrl?: string;
   }>({ open: false, taskType: "", usernames: "", tweetUrl: "" });
+  const [quests, setQuests] = useState<Quest[]>([]); // New state for quests
+  const [hasActiveQuests, setHasActiveQuests] = useState<boolean>(false); // New state for active quests
 
   const router = useRouter();
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    const fetchQuests = async () => {
+      try {
+        const questsSnapshot = await getDocs(collectionRef(db, "quests"));
+        const questsData = questsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Quest[];
+        setQuests(questsData);
+
+        // Check if any quest is active
+        const active = questsData.some((quest) => {
+          const deadlineDate = new Date(quest.deadline);
+          const currentDate = new Date();
+          const isNotPastDeadline = deadlineDate >= currentDate;
+          const isNotEnded = quest.status.toLowerCase() !== "end";
+          return isNotPastDeadline && isNotEnded;
+        });
+        setHasActiveQuests(active);
+      } catch (err) {
+        console.error("Error fetching quests:", err);
+      }
+    };
+    fetchQuests();
+  }, []);
 
   useEffect(() => {
     const styleSheet = document.createElement("style");
@@ -257,7 +304,7 @@ export default function CreateQuestPage() {
 
       toast.success(`Quest Created! ID: ${newQuestId}`);
       setStatus(`✅ Quest Created! ID: ${newQuestId}`);
-      router.push(`/quests/${newQuestId}/do`);
+      router.push(`/quest/${newQuestId}/do`);
     } catch (err: any) {
       console.error("Quest creation error:", err);
       setStatus(`❌ Error: ${err.message}`);
@@ -305,6 +352,16 @@ export default function CreateQuestPage() {
         className="w-full text-gray-800 flex flex-col md:flex-row justify-between items-start gap-5 p-4"
       >
         <div className="bg-white w-full max-w-xl shrink-0 shadow-2xl py-5 px-10 max-h-[100vh] overflow-y-auto">
+          {hasActiveQuests && (
+            <button
+              onClick={() => router.push("/")}
+              className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center mb-4"
+            >
+              <BsArrowLeft className="text-xs" />
+              <span className={`font-semibold ${geistTeko.variable}`}>Back to Home</span>
+            </button>
+          )}
+
           <div className="flex justify-between items-center">
             <img src="/img/logo.png" alt="Cardano Hub Indonesia" width={200} />
           </div>

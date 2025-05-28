@@ -71,7 +71,7 @@ export default function CreateBlog() {
     return () => unsubscribe();
   }, [router]);
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; 
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf', 'video/mp4', 'video/webm'];
 
   const handleFileUpload = async () => {
@@ -243,8 +243,6 @@ export default function CreateBlog() {
         slug,
       };
       console.log('Blog post data:', blogPostData);
-
-      // Use setDoc with numeric ID
       const blogPostRef = doc(db, 'blogposts', newId.toString());
       await setDoc(blogPostRef, blogPostData);
 

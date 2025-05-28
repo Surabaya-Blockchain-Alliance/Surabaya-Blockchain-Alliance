@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ButtonBase from "./button/base";
 import "@meshsdk/react/styles.css";
 import { MeshProvider } from "@meshsdk/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import LogoIcon from "./LogoIcon";
-import { BsArrowRight } from "react-icons/bs";
+import { BsArrowRight, BsGear } from "react-icons/bs";
+import { auth } from "../config"; 
+import { onAuthStateChanged } from "firebase/auth";
 
 interface MenuItem {
   label: string;
@@ -18,20 +20,25 @@ const menuItems: MenuItem[] = [
   {
     label: "Community",
     subMenu: [
-      { label: "About", href: "#", description: "Learn more about our community" },
+      { label: "About", href: "/about", description: "Learn more about our community" },
       { label: "Read Docs", href: "https://comunity-node.gitbook.io/cardanohubindonesia", description: "Find documentation on how to get started" },
-      { label: "Create Article", href: "/blogpost/create", description: "Start writing your blog post!" }, 
-
+      { label: "Article", href: "/blogpost/dashboard", description: "see and create community article" }, 
     ],
   },
   { label: "Quests", href: "/quest" },
   { label: "Events", href: "/Event" },
   { label: "Contact Us", href: "/Contact-Us" },
-
 ];
 
 const Navbar: React.FC = () => {
   const router = useRouter();
+  const [user, setUser] = useState(null); // State to track user login
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const renderMenu = (items: MenuItem[], isSubMenu: boolean = false) => {
     return items.map((item, index) => (
@@ -47,9 +54,7 @@ const Navbar: React.FC = () => {
                     alt="Shoes"
                     className="w-full h-full object-cover rounded-2xl"
                   />
-                  <div
-                    className="p-4 w-32 text-left z-50"
-                  >
+                  <div className="p-4 w-32 text-left z-50">
                     <span className="font-semibold text-lg text-white">Community</span>
                     <p className="font-normal text-xs text-gray-200 break-words whitespace-normal">
                       Join Our Community!
@@ -76,6 +81,10 @@ const Navbar: React.FC = () => {
 
   const handleLogin = () => {
     router.push("/signin");
+  };
+
+  const handleProfile = () => {
+    router.push("/profile");
   };
 
   return (
@@ -113,16 +122,27 @@ const Navbar: React.FC = () => {
 
       {/* Navbar End */}
       <div className="navbar-end">
-        <button
-          onClick={handleLogin}
-          className="bg-black text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
-        >
-          <div className="flex justify-between items-center gap-3">
-            Start Your Journey
-            <BsArrowRight className="text-xs" />
-          </div>
-
-        </button>
+        {user ? (
+          <button
+            onClick={handleProfile}
+            className="bg-black text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
+          >
+            <div className="flex justify-between items-center gap-3">
+              <BsGear className="text-xs" />
+              <span>Profile</span>
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={handleLogin}
+            className="bg-black text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
+          >
+            <div className="flex justify-between items-center gap-3">
+              <span>Start Your Journey</span>
+              <BsArrowRight className="text-xs" />
+            </div>
+          </button>
+        )}
       </div>
     </div>
   );
