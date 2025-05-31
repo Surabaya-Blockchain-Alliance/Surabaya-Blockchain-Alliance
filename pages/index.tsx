@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { db } from "../config";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
-import BlogCard from "@/components/blog/blogCard"; 
+import BlogCard from "@/components/blog/blogCard";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/navbar";
-import About from "@/components/about";
-import Hero from "@/components/hero";
-import Quests from "@/components/quests";
-import Partnerships from "@/components/partnerships";
-import JoinCommunity from "@/components/join-community";
+import About from "@/components/section/about";
+import Hero from "@/components/section/hero";
+import Quests from "@/components/section/event-quest";
+import Partnerships from "@/components/section/partnerships";
+import JoinCommunity from "@/components/section/join-community";
 import Footer from "@/components/footer";
-import InsightsPage from "@/components/Youtube";
+import Insights from "@/components/section/insights";
+import RecentBlogs from "@/components/section/recent-blogs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,32 +25,6 @@ const geistMono = Geist_Mono({
 
 export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const q = query(
-          collection(db, "blogposts"),
-          orderBy("createdAt", "desc"),
-          limit(3)
-        );
-        const querySnapshot = await getDocs(q);
-        const postsData = querySnapshot.docs.map(doc => ({
-          id: doc.id, 
-          ...doc.data(),
-        }));
-        setPosts(postsData); 
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPosts();
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -61,54 +36,31 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`bg-gray-100 min-h-screen`}>
+    <div className={`bg-white min-h-screen`}>
       {/* Sticky Navbar */}
       <div
-        className={`sticky top-0 z-50 transition-all ${
-          isScrolled ? "bg-white shadow-md" : "bg-transparent"
-        }`}
+        className={`sticky top-0 z-50 transition-all`}
       >
-        <div className={`${geistSans.variable} ${geistMono.variable} px-6 md:px-20 lg:px-40 ${isScrolled ? 'py-4' : 'py-1'}`}>
+        <div className={`${geistSans.variable} ${geistMono.variable} px-6 md:px-20 lg:px-40 ${isScrolled ? 'py-4' : 'py-4'}`}>
           <Navbar />
         </div>
       </div>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <Hero />
-      {/* About Section */}
+      {/* About */}
       <About />
-      {/* Quests Section */}
+      {/* Quests */}
       <Quests />
-      <InsightsPage />
-      {/* Latest Blog Posts */}
-      <section className="py-10 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl text-black font-bold mb-8 text-center">Latest Blog Posts</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {loading ? (
-              <p className="text-center col-span-full">Loading posts...</p>
-            ) : posts.length > 0 ? (
-              posts.map((post) => (
-                <BlogCard
-                  key={post.id}
-                  title={post.title}
-                  description={post.description}
-                  mediaUrl={post.mediaUrl}
-                  id={post.id} 
-                />
-              ))
-            ) : (
-              <p className="text-center col-span-full">No blog posts available.</p>
-            )}
-          </div>
-        </div>
-      </section>
-      
-      {/* Partnerships Section */}
-      <Partnerships />  
-      {/* JoinCommunity Section */}
-      <JoinCommunity />  
-      {/* Footer Section */}
+      {/* Insights */}
+      <Insights />
+      {/* Recent Blogs */}
+      <RecentBlogs />
+      {/* Partnerships */}
+      <Partnerships />
+      {/* JoinCommunity */}
+      <JoinCommunity />
+      {/* Footer */}
       <Footer />
     </div>
   );

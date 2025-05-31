@@ -367,7 +367,7 @@ export default function EventDetailsPage() {
             {hasJoined && (
               <div className="space-y-2 mt-4">
                 <Link
-                  href={`/Join/event/${id}/check-in`}
+                  href={`/join/event/${id}/check-in`}
                   className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2"
                 >
                   <FaCheckCircle />
@@ -375,7 +375,7 @@ export default function EventDetailsPage() {
                 </Link>
                 {event.policyId && event.assetName && (
                   <Link
-                    href={`/Join/event/${id}/claim`}
+                    href={`/join/event/${id}/claim`}
                     className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2"
                   >
                     <FaGift />

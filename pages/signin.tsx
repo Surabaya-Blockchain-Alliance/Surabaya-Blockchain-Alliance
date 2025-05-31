@@ -6,8 +6,8 @@ import Link from 'next/link';
 import WalletLogin from '../components/button/walletLogin';
 import { signInWithCustomToken } from 'firebase/auth';
 import { FaGoogle, FaWallet } from 'react-icons/fa';
-import LogoIcon from '@/components/LogoIcon';
-import SocialIcon from '@/components/SocialIcon';
+import LogoIcon from '@/components/logo-icon';
+import SocialIcon from '@/components/social-icon';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface User {

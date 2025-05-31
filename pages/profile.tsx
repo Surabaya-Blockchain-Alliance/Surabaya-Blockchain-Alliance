@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { signOut } from 'firebase/auth'; 
 import Link from 'next/link';
-import LogoIcon from '@/components/LogoIcon';
-import SocialIcon from '@/components/SocialIcon';
+import LogoIcon from '@/components/logo-icon';
+import SocialIcon from '@/components/social-icon';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
-import EventCard from '@/components/card/events';
+import EventCard from '@/components/card/event';
 import { auth } from '../config';
 
 export default function ProfilePage() {
@@ -174,7 +174,7 @@ export default function ProfilePage() {
           {/* Right Column: Events */}
           <div className="bg-white shadow-xl p-6 h-fit">
             <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
-            <EventCard />
+            <EventCard title={''} description={''} schedule={''} />
           </div>
         </div>
       </main>

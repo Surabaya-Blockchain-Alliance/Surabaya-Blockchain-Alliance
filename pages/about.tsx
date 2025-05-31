@@ -32,7 +32,7 @@ const About: React.FC = () => {
                                 <p className="mb-5 text-gray-700 font-semibold">
                                     Meet the new standard for modern customer engagement. Drive growth and build loyalty with quests, sprints, and insights.
                                 </p>
-                                <Link className="btn bg-transparent font-bold border-2 rounded-full hover:text-white hover:border-white px-6 text-black" href="/create/Event">
+                                <Link className="btn bg-transparent font-bold border-2 rounded-full hover:text-white hover:border-white px-6 text-black" href="/create/event">
                                     Try it for free <BsArrowRight className="text-xs" />
                                 </Link>
                             </div>

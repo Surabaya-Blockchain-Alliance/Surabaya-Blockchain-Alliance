@@ -30,7 +30,7 @@ const Drawer: React.FC<DrawerProps> = ({ drawerItems, classActiveTab, classDeact
             <div className="drawer-content">
                 <div className="flex flex-col h-auto w-full">
                     {/* Button container */}
-                    <div className="flex items-center justify-between overflow-x-auto">
+                    <div className="flex items-center justify-center overflow-x-auto">
                         <ul className={`flex space-x-3 ${classParent}`}>
                             {drawerItems.map((item, index) => (
                                 <li key={index} className="flex-none ">

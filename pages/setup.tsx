@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ConnectWallet from '../components/button/ConnectWallet';
-import SocialIcon from '@/components/SocialIcon';
+import SocialIcon from '@/components/social-icon';
 import { FaXTwitter } from 'react-icons/fa6';
 import { FaDiscord } from 'react-icons/fa';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';

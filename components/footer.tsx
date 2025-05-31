@@ -1,8 +1,8 @@
 import React from "react";
 import { FaDiscord, FaTelegram } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import LogoIcon from "./LogoIcon";
-import SocialIcon from "./SocialIcon";
+import LogoIcon from "./logo-icon";
+import SocialIcon from "./social-icon";
 
 const Footer: React.FC = () => {
     const currentYear = new Date().getFullYear();
@@ -55,15 +55,8 @@ const Footer: React.FC = () => {
 
             </footer>
             <div className=""></div>
-            <footer className="footer bg-white text-black items-center p-4">
-                <aside className="grid-flow-col items-center">
-                    <img src="/img/logo.png" alt="" className="h-full" width={100} />
-
-                </aside>
-                <nav className="grid-flow-col gap-4 md:place-self-center md:justify-self-end">
-                    {/* <SocialIcon type="twitter" />
-                    <SocialIcon type="discord" />
-                    <SocialIcon type="telegram" /> */}
+            <footer className="footer bg-white text-black items-center p-2">
+                <nav className="grid-flow-col gap-4 md:place-self-center md:justify-self-center font-semibold">
                     <p>Copyright © {currentYear} - All rights reserved</p>
                 </nav>
             </footer>

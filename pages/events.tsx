@@ -7,7 +7,7 @@ import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { BsArrowLeft } from "react-icons/bs";
-import EventCard from "@/components/card/events"; 
+import EventCard from "@/components/card/event"; 
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
@@ -39,8 +39,8 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
-  const handleCardClick = (id) => {
-    router.push(`/Join/event/${id}`);
+  const handleEventsClick = (id: any) => {
+    router.push(`/join/event/${id}`);
   };
 
   const bgImage =
@@ -110,8 +110,7 @@ export default function EventsPage() {
                   joiners="0"
                   payment="10 ADA"
                   avatar={event.image}
-                  onClick={() => handleCardClick(event.id)}
-                />
+                  onClick={() => handleEventsClick(event.id)} time={""}                />
               ))}
             </div>
           )}

@@ -6,31 +6,19 @@ import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { BsArrowLeft } from "react-icons/bs";
-import QuestCard from "@/components/card/quests";
+import QuestCard from "@/components/card/quest";
+import { Quest } from "@/types/quest"
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
   subsets: ["latin"],
 });
 
-interface Quest {
-  id: string;
-  name: string;
-  description: string;
-  reward: string;
-  deadline: string;
-  status: string;
-  creator: string;
-  avatars?: string;
-  media?: string[];
-}
-
 export default function QuestsPage() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     const styleSheet = document.createElement("style");
