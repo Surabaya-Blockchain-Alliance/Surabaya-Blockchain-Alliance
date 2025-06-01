@@ -2,7 +2,7 @@
 import dynamic from 'next/dynamic';
 
 const ContactUs = dynamic(() => import('@/components/section/contact-us'), {
-    ssr: false, // disables server-side rendering
+    ssr: false, 
 });
 
 export default function ContactPage() {
