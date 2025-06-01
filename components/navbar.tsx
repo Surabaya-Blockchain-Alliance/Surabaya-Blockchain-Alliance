@@ -27,7 +27,7 @@ const menuItems: MenuItem[] = [
   },
   { label: "Quests", href: "/quests" },
   { label: "Events", href: "/events" },
-  { label: "Contact Us", href: "/contact-us" },
+  { label: "Contact Us", href: "/contact" },
 ];
 
 const Navbar: React.FC = () => {
@@ -91,17 +91,13 @@ const Navbar: React.FC = () => {
     <div className="navbar bg-white rounded-lg shadow-lg">
       <div className="navbar-start">
         <div className="dropdown lg:hidden">
-          <div
-            tabIndex={0}
-            role="button"
-            className="btn btn-ghost hover:bg-none rounded-lg"
-          >
+        <Link href="/" className="btn btn-ghost hover:bg-none rounded-lg">
             <img
               src="/img/logo.png"
               alt="Menu Icon"
               className="w-6 h-6"
             />
-          </div>
+          </Link>
           <ul
             tabIndex={0}
             className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
@@ -110,9 +106,9 @@ const Navbar: React.FC = () => {
           </ul>
         </div>
         {/* Brand Name */}
-        <a className="btn btn-ghost text-black hover:bg-transparent text-xl">
+        <Link href="/" className="btn btn-ghost text-black hover:bg-transparent text-xl">
           <img src="/img/logo.png" alt="" className="h-full" />
-        </a>
+        </Link>
         <div className="hidden navbar-center lg:flex text-black w-full">
           <ul className="menu menu-horizontal px-1">
             {renderMenu(menuItems)}

@@ -7,7 +7,7 @@ import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { BsArrowLeft } from "react-icons/bs";
-import EventCard from "@/components/card/event"; 
+import EventCard from "@/components/card/event";
 
 const geistTeko = Teko({
   variable: "--font-geist-teko",
@@ -43,38 +43,29 @@ export default function EventsPage() {
     router.push(`/join/event/${id}`);
   };
 
-  const bgImage =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
-
   return (
-    <div
-      className="relative min-h-screen flex flex-col text-black overflow-hidden bg-white"
-      style={{
-        backgroundImage: `url(${bgImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      <div className="absolute inset-0 bg-white/70 z-0"></div>
-      <Navbar />
-      <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <Link
-            className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center"
-            href="/"
-          >
-            <BsArrowLeft className="text-xs" />
-            <span className={`font-semibold ${geistTeko.variable}`}>Back to Home</span>
-          </Link>
-
-          <h1 className="text-5xl font-bold leading-tight">
-            <span className="text-gray-900">Coming up All</span>{" "}
-            <span className="text-green-500">Event </span>
-          </h1>
-          <p className="text-gray-600 font-medium text-lg">
-            Browse all minted event NFTs.
-          </p>
+    <section
+      className="relative min-h-screen flex flex-col text-black overflow-hidden bg-white">
+      <div className="flex-grow w-full pt-5 pb-20 px-6 fade-in relative z-10">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="cursor-pointer w-full pb-10 overflow-hidden">
+            <Link href="/quests" className="card image-full h-auto rounded-xl">
+              <img
+                src="./img/bg-hero.svg"
+                alt="Quests"
+                className="w-full h-48 object-cover bg-opacity-10 rounded-2xl"
+              />
+              <div className="p-10 w-full text-end z-50 space-y-2 flex items-center justify-end">
+                <div className="space-y-2">
+                  <span className="font-semibold text-4xl text-white break-words whitespace-nowrap">Coming Up All <span className="bg-gradient-to-r from-sky-400 to-indigo-600 bg-clip-text text-transparent">Events</span></span>
+                  <p className="font-normal text-sm flex items-center break-words whitespace-nowrap justify-end gap-2 text-gray-200">
+                    <BsArrowLeft />
+                    Browse all minted event NFTs.
+                  </p>
+                </div>
+              </div>
+            </Link>
+          </div>
 
           {loading && (
             <div className="flex justify-center">
@@ -102,21 +93,17 @@ export default function EventsPage() {
                   key={event.id}
                   title={event.title}
                   description={event.description}
-                  schedule={new Date(event.time).toLocaleString("en-US", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                    timeZone: event.timezone || "UTC",
-                  })}
+                  time={event.time}
+                  timezone={event.timezone}
                   joiners="0"
-                  payment="10 ADA"
+                  payment="10 ₳"
                   avatar={event.image}
-                  onClick={() => handleEventsClick(event.id)} time={""}                />
+                  onClick={() => handleEventsClick(event.id)} />
               ))}
             </div>
           )}
         </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
+    </section>
   );
 }

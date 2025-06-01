@@ -24,28 +24,9 @@ const geistMono = Geist_Mono({
 });
 
 export default function Home() {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   return (
     <div className={`bg-white min-h-screen`}>
-      {/* Sticky Navbar */}
-      <div
-        className={`sticky top-0 z-50 transition-all`}
-      >
-        <div className={`${geistSans.variable} ${geistMono.variable} px-6 md:px-20 lg:px-40 ${isScrolled ? 'py-4' : 'py-4'}`}>
-          <Navbar />
-        </div>
-      </div>
-
       {/* Hero */}
       <Hero />
       {/* About */}
@@ -60,8 +41,6 @@ export default function Home() {
       <Partnerships />
       {/* JoinCommunity */}
       <JoinCommunity />
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

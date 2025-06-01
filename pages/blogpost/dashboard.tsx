@@ -3,15 +3,13 @@ import { db, auth } from '@/config';
 import Link from "next/link";
 import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
-import Navbar from '@/components/navbar';
-import Footer from '@/components/footer';
 import BlogCard from '@/components/blog/blogCard';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const extractDescription = (content: any, maxLength: number = 100): string => {
   if (!content || !content.content) return 'No description available.';
-  
+
   let text = '';
   const traverseContent = (nodes: any[]) => {
     for (const node of nodes) {
@@ -28,7 +26,7 @@ const extractDescription = (content: any, maxLength: number = 100): string => {
 
 const extractMediaUrl = (content: any): string | null => {
   if (!content || !content.content) return null;
-  
+
   let mediaUrl = null;
   const traverseContent = (nodes: any[]) => {
     for (const node of nodes) {
@@ -105,7 +103,7 @@ export default function BlogDashboard() {
           createdAt: post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'
         })));
         setUsername(fetchedUsername);
-        const userPosts = sortedPosts.filter((post) => 
+        const userPosts = sortedPosts.filter((post) =>
           post.author && fetchedUsername && post.author.toLowerCase() === fetchedUsername.toLowerCase()
         );
         setMyPosts(userPosts);
@@ -199,7 +197,6 @@ export default function BlogDashboard() {
         animation: 'bg-scrolling-reverse 0.92s linear infinite',
       }}
     >
-      <Navbar />
       <div className="flex-grow flex justify-center px-4 py-10">
         <div className="w-full max-w-6xl flex gap-6">
           {/* Left Column: All Posts */}
@@ -304,19 +301,18 @@ export default function BlogDashboard() {
                   ))}
                 </div>
               ) : (
-                <Link href="/blogpost/create">
-                  <a className="text-blue-500 hover:underline">Create one now!</a>
+                <Link href="/blogpost/create" className="text-blue-500 hover:underline">
+                  Create one now!
                 </Link>
               )
             ) : (
-                <Link href="/signin">
-                  <a className="text-blue-500 hover:underline">Sign in now!</a>
-                </Link>
+              <Link href="/signin" className="text-blue-500 hover:underline">
+                Sign in now!
+              </Link>
             )}
           </div>
         </div>
       </div>
-      <Footer />
       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );

@@ -24,7 +24,7 @@ export default function BlogPost() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const router = useRouter();
-  const { id } = router.query; 
+  const { id } = router.query;
 
   useEffect(() => {
     const fetchPostAndComments = async () => {
@@ -73,7 +73,7 @@ export default function BlogPost() {
     fetchPostAndComments();
 
     return () => unsubscribe();
-  }, [id]); 
+  }, [id]);
 
   const handleLike = async () => {
     if (!user) {
@@ -135,10 +135,10 @@ export default function BlogPost() {
           prev.map((c) =>
             c.id === commentId
               ? {
-                  ...c,
-                  likes: (c.likes || 0) - 1,
-                  likedBy: c.likedBy.filter((uid: string) => uid !== user.uid),
-                }
+                ...c,
+                likes: (c.likes || 0) - 1,
+                likedBy: c.likedBy.filter((uid: string) => uid !== user.uid),
+              }
               : c
           )
         );
@@ -151,10 +151,10 @@ export default function BlogPost() {
           prev.map((c) =>
             c.id === commentId
               ? {
-                  ...c,
-                  likes: (c.likes || 0) + 1,
-                  likedBy: [...(c.likedBy || []), user.uid],
-                }
+                ...c,
+                likes: (c.likes || 0) + 1,
+                likedBy: [...(c.likedBy || []), user.uid],
+              }
               : c
           )
         );
@@ -262,28 +262,28 @@ export default function BlogPost() {
   const hasLiked = user && post?.likedBy?.includes(user.uid);
   const contentHtml = post
     ? generateHTML(post.content, [
-        StarterKit.configure({
-          heading: { levels: [1, 2, 3] },
-          codeBlock: {},
-          blockquote: {},
-          bulletList: {},
-          orderedList: {},
-        }),
-        Image.configure({
-          HTMLAttributes: {
-            class: 'max-w-full h-auto',
-            onerror: "this.onerror=null;this.src='/fallback-image.jpg';",
-            crossOrigin: 'anonymous',
-          },
-        }),
-        Link.configure({
-          HTMLAttributes: {
-            class: 'text-blue-600 underline',
-          },
-        }),
-        TextStyle,
-        Color,
-      ])
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        codeBlock: {},
+        blockquote: {},
+        bulletList: {},
+        orderedList: {},
+      }),
+      Image.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto',
+          onerror: "this.onerror=null;this.src='/fallback-image.jpg';",
+          crossOrigin: 'anonymous',
+        },
+      }),
+      Link.configure({
+        HTMLAttributes: {
+          class: 'text-blue-600 underline',
+        },
+      }),
+      TextStyle,
+      Color,
+    ])
     : '';
 
   return (
@@ -292,7 +292,6 @@ export default function BlogPost() {
         <title>{post.title}</title>
         <meta name="description" content={post.content?.content?.[0]?.content?.[0]?.text?.slice(0, 150) || 'Blog post'} />
       </Head>
-      <Navbar />
       <div className="flex-grow flex justify-center px-4 py-10">
         <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-md prose prose-lg">
           <h1 className="text-4xl font-bold text-gray-900 mb-6">{post.title}</h1>
@@ -307,17 +306,16 @@ export default function BlogPost() {
               <span className="text-sm text-gray-500 ml-4">
                 {post.createdAt?.seconds
                   ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('en-US', {
-                      dateStyle: 'medium',
-                    })
+                    dateStyle: 'medium',
+                  })
                   : 'Unknown date'}
               </span>
             </div>
             <div className="flex items-center">
               <button
                 onClick={handleLike}
-                className={`flex items-center text-sm ${
-                  hasLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
-                }`}
+                className={`flex items-center text-sm ${hasLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
+                  }`}
                 disabled={!user}
               >
                 <svg
@@ -356,8 +354,8 @@ export default function BlogPost() {
                           <span className="ml-4">
                             {comment.createdAt?.seconds
                               ? new Date(comment.createdAt.seconds * 1000).toLocaleDateString('en-US', {
-                                  dateStyle: 'medium',
-                                })
+                                dateStyle: 'medium',
+                              })
                               : 'Unknown date'}
                             {comment.updatedAt?.seconds && (
                               <span className="ml-2">(Edited)</span>
@@ -366,11 +364,10 @@ export default function BlogPost() {
                         </div>
                         <button
                           onClick={() => handleCommentLike(comment.id)}
-                          className={`flex items-center text-sm ${
-                            user && comment.likedBy?.includes(user.uid)
+                          className={`flex items-center text-sm ${user && comment.likedBy?.includes(user.uid)
                               ? 'text-red-600'
                               : 'text-gray-600 hover:text-red-600'
-                          }`}
+                            }`}
                           disabled={!user}
                         >
                           <svg
@@ -444,7 +441,6 @@ export default function BlogPost() {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

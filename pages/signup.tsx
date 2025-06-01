@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { auth, provider } from '../config';
 import { signInWithPopup } from 'firebase/auth';
-import ButtonBase from "@/components/button/base";
-import LogoIcon from "@/components/logo-icon";
 import SocialIcon from "@/components/social-icon";
 import Link from "next/link";
-import { FaGoogle, FaTwitter, FaWallet } from "react-icons/fa";
-import { FaXTwitter } from "react-icons/fa6";
+import { FaGoogle, FaWallet } from "react-icons/fa";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 export default function SignUp() {
@@ -53,16 +50,9 @@ export default function SignUp() {
 
     return (
         <div className="min-h-screen">
-            <div
-                className="w-full h-screen text-gray-800"
-                style={{
-                    fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-                    background: `url(${bgImage}) repeat 0 0`,
-                    animation: "bg-scrolling-reverse 0.92s linear infinite",
-                }}
-            >
-                <div className="flex justify-between items-center gap-5">
-                    <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10">
+            <div className="flex w-full min-h-screen text-gray-800 bg-white p-5">
+                <div className="flex justify-between items-center w-full gap-20">
+                    <div className="h-screen bg-white w-full max-w-xl shrink-0 items-center">
                         <div className="flex justify-between items-center">
                             <img src="/img/logo.png" alt="" className="h-full" width={130} />
                             <div className="flex items-center gap-2">
@@ -107,17 +97,19 @@ export default function SignUp() {
                             </nav>
                         </footer>
                     </div>
-                    <div className="bg-transparent text-center p-48">
-                        <h1 className="text-4xl font-semibold">
-                            <span className='text-blue-800'>Cardano Hub</span> <span className='text-red-600'>Indonesia</span>
-                        </h1>
-                        <DotLottieReact
-                            src="https://lottie.host/300794aa-cd62-4cdf-89ac-3463b38d29a7/wVcfBSixSv.lottie"
-                            loop
-                            autoplay
-                        />
-                        <p className="text-lg font-medium">Start engage users and communities!</p>
-
+                    <div
+                        className="hidden md:flex w-full bg-cover bg-center items-center h-screen justify-center text-white rounded-xl"
+                        style={{ backgroundImage: "url('./img/bg-signup.avif')" }}
+                    >
+                        <div className="space-y-4 w-full px-10 text-end">
+                            <p className="text-sm uppercase tracking-widest">- A Wise Quote -</p>
+                            <h1 className="text-4xl font-bold leading-10">
+                                Join the Movement
+                            </h1>
+                            <p className="text-lg font-semibold text-white/80">
+                                Start your journey with us today!
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

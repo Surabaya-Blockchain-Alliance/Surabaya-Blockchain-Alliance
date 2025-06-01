@@ -159,7 +159,7 @@ const WalletLogin = ({ onConnect, onVerified }) => {
   return (
     <div>
       <button
-        className="btn w-full bg-white border-white shadow-xl text-black space-x-2 flex justify-between hover:text-white hover:bg-black hover:border-black"
+        className="btn w-full bg-black border-white shadow-xl text-white space-x-2 flex justify-between hover:text-black hover:bg-white hover:border-black"
         onClick={handleButtonClick}
         disabled={loading}
       >

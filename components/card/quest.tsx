@@ -38,7 +38,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quests = [] }) => {
             aria-label={`View quest: ${quest.name}`}
           >
             <div className="space-y-2 p-3 text-black">
-              <div className="flex items-center justify-center space-x-3">
+              <div className="flex items-center justify-start space-x-3">
                 <div className="avatar">
                   <div className="ring-gray-300 ring-offset-base-100 w-24 rounded-full ring-2 ring-offset-2">
                     <img
@@ -48,7 +48,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quests = [] }) => {
                     />
                   </div>
                 </div>
-                <div className="space-y-2 w-full">
+                <div className="space-y-2 w-full text-start">
                   <p className="font-semibold leading-none text-lg">{quest.name}</p>
                   <p className="text-xs break-words whitespace-normal">{quest.description}</p>
                 </div>

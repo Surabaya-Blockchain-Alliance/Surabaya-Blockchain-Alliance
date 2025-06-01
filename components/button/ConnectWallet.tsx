@@ -53,15 +53,15 @@ const ConnectWallet = ({ onConnect }) => {
     try {
       const walletInstance = await BrowserWallet.enable(walletId);
       const address = await getWalletAddress(walletInstance);
-  
+
       if (!address || !address.startsWith('addr')) {
         throw new Error('Invalid Cardano address returned.');
       }
-  
+
       setSelectedWallet({ ...walletInstance, address });
       setIsConnected(true);
       console.log(`Wallet connected: ${walletId}`, address);
-        await handleSignAndAuthenticate(walletInstance, address);
+      await handleSignAndAuthenticate(walletInstance, address);
     } catch (error) {
       console.error('Error enabling wallet:', error);
       alert('Failed to connect wallet.');
@@ -72,7 +72,7 @@ const ConnectWallet = ({ onConnect }) => {
     try {
       const res = await fetch(`/api/walletAuth?walletAddress=${walletAddress}`);
       const data = await res.json();
-      console.log('Fetched nonce:', data.nonce); 
+      console.log('Fetched nonce:', data.nonce);
       return data.nonce;
     } catch (error) {
       console.error("Error fetching nonce:", error);
@@ -84,16 +84,16 @@ const ConnectWallet = ({ onConnect }) => {
   const handleSignAndAuthenticate = async (walletInstance, walletAddress) => {
     try {
       setLoading(true);
-        const nonce = await fetchNonce(walletAddress);
+      const nonce = await fetchNonce(walletAddress);
       if (!nonce) return;
-  
+
       const { key, signature } = await walletInstance.signData(nonce, walletAddress);
-        const response = await fetch('/api/walletAuth/verify', {
+      const response = await fetch('/api/walletAuth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nonce, walletAddress, signature, key }),
       });
-  
+
       if (!response.ok) {
         throw new Error('Signature verification failed.');
       }
@@ -106,9 +106,9 @@ const ConnectWallet = ({ onConnect }) => {
       setLoading(false);
     }
   };
-  
-  
-  
+
+
+
 
   const handleDisconnect = () => {
     disconnect();
@@ -146,31 +146,36 @@ const ConnectWallet = ({ onConnect }) => {
       {showWalletModal && (
         <div className="absolute top-0 left-0 w-full h-full bg-gray-500 bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-xl w-80">
-            <h3 className="text-xl font-semibold mb-4">Choose Wallet</h3>
+            <h3 className="text-xl font-semibold mb-4">Choose your wallets</h3>
             <div className="grid gap-4">
               {wallets.map((wallet, idx) => (
                 <button
                   key={idx}
-                  className={`btn w-full ${
-                    selectedWallet?.name === wallet.name
+                  className={`btn w-full flex items-center gap-2 ${selectedWallet?.name === wallet.name
                       ? 'bg-black text-white border-black'
                       : 'btn-outline'
-                  }`}
+                    }`}
                   onClick={() => handleWalletSelect(wallet.id)}
                 >
+                  <img
+                    src={`${wallet.icon}`}
+                    alt={wallet.name}
+                    className="w-6 h-6 rounded-full"
+                  />
                   {wallet.name}
                 </button>
               ))}
             </div>
             <button
-              className="btn mt-4 w-full bg-gray-200 text-black"
+              className="btn btn-sm mt-4 w-full bg-black text-white"
               onClick={() => setShowWalletModal(false)}
             >
-              Cancel
+              Close
             </button>
           </div>
         </div>
       )}
+
     </div>
   );
 };

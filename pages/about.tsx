@@ -12,10 +12,8 @@ const geistTeko = Teko({
 
 const About: React.FC = () => {
     return (
-        <div className="flex flex-col min-h-screen bg-white">
-            <Navbar />
-
-            <main className="flex-grow flex items-start justify-center">
+        <section className="flex flex-col min-h-screen bg-white">
+            <div className="flex-grow flex items-start justify-center">
                 <div className="hero-content text-neutral-content py-10">
                     <div className="max-w-7xl space-y-5">
                         <div className="flex items-center justify-between gap-3">
@@ -25,7 +23,7 @@ const About: React.FC = () => {
                                     <BsArrowRight className="text-xs" />
                                 </Link>
                                 <h1 className="mb-5 text-5xl font-bold text-gray-900">
-                                    Better Way to Engage Customers
+                                    Better Way to <span className="bg-gradient-to-br from-teal-100 via-cyan-400 to-sky-600 bg-clip-text text-transparent">Engage Customers</span>
                                 </h1>
                             </div>
                             <div className="space-y-3 text-left pt-20">
@@ -42,10 +40,8 @@ const About: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </main>
-
-            <Footer />
-        </div>
+            </div>
+        </section>
     );
 };
 
