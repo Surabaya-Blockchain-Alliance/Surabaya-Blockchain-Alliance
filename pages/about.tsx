@@ -1,14 +1,6 @@
 import React from "react";
 import Link from "next/link";
 import { BsArrowRight } from "react-icons/bs";
-import { Teko } from "next/font/google";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
-
-const geistTeko = Teko({
-    variable: "--font-geist-teko",
-    subsets: ["latin"],
-});
 
 const About: React.FC = () => {
     return (
@@ -19,7 +11,7 @@ const About: React.FC = () => {
                         <div className="flex items-center justify-between gap-3">
                             <div className="space-y-3 text-left">
                                 <Link className="bg-transparent animate-pulse rounded-full flex items-center justify-start gap-3 text-gray-600" href="">
-                                    <span className={`font-semibold ${geistTeko.variable}`}>What We Do</span>
+                                    <span className={`font-semibold`}>What We Do</span>
                                     <BsArrowRight className="text-xs" />
                                 </Link>
                                 <h1 className="mb-5 text-5xl font-bold text-gray-900">

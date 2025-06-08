@@ -6,6 +6,8 @@ import QuestCard from "@/components/card/quest";
 import { Quest } from "@/types/quest"
 import Link from "next/link";
 import GlowingRings from "@/components/animated/glowing";
+import LoadingScreen from "@/components/loading-screen";
+import ErrorPage from "./error";
 
 
 export default function QuestsPage() {
@@ -74,28 +76,11 @@ export default function QuestsPage() {
           </div>
 
           {loading && (
-            <div className="flex justify-center">
-              <svg
-                className="animate-spin h-8 w-8 text-gray-600"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
-              </svg>
-            </div>
+            <LoadingScreen />
           )}
 
           {error && (
-            <div className="alert alert-error mt-2 text-red-600 font-semibold">
-              <span>{error}</span>
-            </div>
+            <ErrorPage error={error} />
           )}
 
           {!loading && !error && quests.length === 0 && (

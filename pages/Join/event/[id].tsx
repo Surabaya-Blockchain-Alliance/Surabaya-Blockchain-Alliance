@@ -365,7 +365,7 @@ export default function EventDetailsPage() {
                   <Link className="btn btn-primary" target="_blank" href={event.link}>
                     <FaVideo /> <span className="pt-1">Enter Room</span>
                   </Link>
-                  <ConnectWallet onConnect={handleWalletConnect} />
+                  <ConnectWallet onConnect={handleWalletConnect} onVerified={undefined} />
                 </div>
               </div>
             </div>

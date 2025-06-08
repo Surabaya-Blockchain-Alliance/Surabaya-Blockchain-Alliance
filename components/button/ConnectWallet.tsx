@@ -3,7 +3,7 @@ import { useWallet } from '@meshsdk/react';
 import { BrowserWallet } from '@meshsdk/core';
 import { FaWallet } from 'react-icons/fa6';
 
-const ConnectWallet = ({ onConnect }) => {
+const ConnectWallet = ({ onConnect, onVerified }) => {
   const { wallet, connected, disconnect } = useWallet();
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [showWalletModal, setShowWalletModal] = useState(false);

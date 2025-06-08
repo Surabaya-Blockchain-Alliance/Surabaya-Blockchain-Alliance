@@ -59,7 +59,7 @@ const BlogCard = ({
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <p className="text-sm text-zinc-700">Blog</p>
-          {/* {isAuthor && ( */}
+          {isAuthor && (
             <div className="dropdown dropdown-hover dropdown-end">
               <div
                 tabIndex={0}
@@ -86,7 +86,7 @@ const BlogCard = ({
                 </li>
               </ul>
             </div>
-          {/* )} */}
+          )}
         </div>
 
         <h3 className="text-black text-xl font-bold">{title}</h3>

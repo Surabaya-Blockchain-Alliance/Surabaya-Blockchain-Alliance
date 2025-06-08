@@ -7,6 +7,11 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import LoadingScreen from "@/components/loading-screen";
+import ErrorPage from "@/pages/error";
+import { FaCalendarCheck, FaCheckCircle, FaCloudversify, FaDiscord, FaFirefoxBrowser, FaStop, FaStopCircle } from "react-icons/fa";
+import { BsArrowLeft } from "react-icons/bs";
+import { FaXTwitter } from "react-icons/fa6";
 
 interface Task {
   taskType: string;
@@ -419,212 +424,176 @@ export default function DoQuestPage() {
     }
   };
 
-  const bgImage: string =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
-
   if (loading || !authReady) {
     console.log("Rendering loading state");
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{
-          fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-          background: `url(${bgImage}) repeat 0 0`,
-          animation: "bg-scrolling-reverse 0.92s linear infinite",
-        }}
-      >
-        <div className="text-black font-semibold bg-white p-4 rounded-lg shadow-md">Loading quest data...</div>
-      </div>
-    );
+    return <LoadingScreen />
   }
 
   if (error) {
     console.log("Rendering error state:", error);
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{
-          fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-          background: `url(${bgImage}) repeat 0 0`,
-          animation: "bg-scrolling-reverse 0.92s linear infinite",
-        }}
-      >
-        <div className="text-black font-semibold bg-white p-4 rounded-lg shadow-md">{error}</div>
-      </div>
-    );
+    return <ErrorPage error={error} />;
   }
 
   if (!quest) {
     console.log("Rendering quest not found state");
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{
-          fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-          background: `url(${bgImage}) repeat 0 0`,
-          animation: "bg-scrolling-reverse 0.92s linear infinite",
-        }}
-      >
-        <div className="text-black font-semibold bg-white p-4 rounded-lg shadow-md">Quest not found.</div>
-      </div>
-    );
+    return <ErrorPage error={"Quest not found!"} />;
   }
 
   console.log("Rendering main content, quest:", quest);
   return (
-    <div
-      className="min-h-screen w-full"
-      style={{
-        fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-        background: `url(${bgImage}) repeat 0 0`,
-        animation: "bg-scrolling-reverse 0.92s linear infinite",
-      }}
-    >
-      <div className="flex flex-col items-center p-4">
-        {/* Hero Section */}
-        <div className="bg-white max-w-3xl w-full p-8 rounded-xl shadow-2xl mb-6">
-          <div className="flex justify-between items-center mb-6">
-            <img src="/img/logo.png" alt="Cardano Hub Indonesia" className="h-full" width={130} />
-            <Link href="/quest" className="bg-black rounded-lg text-white px-3 py-1.5 text-xs">
-              Back to Quests
-            </Link>
+    <section className="min-h-screen w-full bg-white text-black">
+      <div className="flex justify-between items-center gap-4 px-40 py-10">
+        {/* Quest Info */}
+        <div className="flex items-center justify-start space-x-4">
+          <div className="avatar">
+            <div className="ring-gray-300 ring-offset-base-100 w-32 rounded-lg shadow-lg ring-2 ring-offset-2">
+              <img
+                src={"/img/logo.png"}
+                alt="Quest avatar"
+                onError={(e) => ((e.target as HTMLImageElement).src = "/img/logo.png")}
+              />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-black mb-2">
-            <span className="text-blue-800">Cardano Hub</span>{" "}
-            <span className="text-red-600">Indonesia</span>: {quest.name}
-          </h1>
-          <DotLottieReact
-            src="https://lottie.host/300794aa-cd62-4cdf-89ac-3463b38d29a7/wVcfBSixSv.lottie"
-            loop
-            autoplay
-            className="w-48 h-48 mx-auto mb-4"
-          />
-          <p className="text-black text-base font-medium mb-4">{quest.description}</p>
+          <div className="space-y-2 w-full text-start">
+            <p className="font-semibold leading-none text-2xl">{quest.name}</p>
+            <p className="text-sm break-words whitespace-normal">{quest.description}</p>
+            <button className="btn bt-sm">
+              <FaCalendarCheck />
+              <span className="pt-1">{new Date(quest.deadline).toLocaleDateString()}</span>
+              <div className={`badge badge-sm badge-${isQuestExpired ? 'secondary' : 'success'}`}>
+                <span className="pt-1">
+                  {isQuestExpired ? 'Expired' : 'On Going'}
+                </span>
+              </div>
+            </button>
+          </div>
         </div>
 
-        {/* Task Section */}
-        <div className="bg-white max-w-3xl w-full p-8 rounded-xl shadow-md">
-          {isQuestExpired ? (
-            <div className="alert alert-error mb-4 text-red-600 font-semibold">
-              This quest has expired and can no longer be completed.
+        {/* Rewards */}
+        <div className="card w-96 bg-base-100 shadow-sm border border-dashed border-gray-500">
+          <div className="card-body">
+            <span className="badge font-semibold badge-primary pt-1">Rewards</span>
+            <div className="flex justify-between">
+              <h2 className="text-3xl font-bold">{userProgress?.pointsCollected || 0}</h2>
+              <span className="text-xl">🏆 Points</span>
             </div>
-          ) : null}
-          <p className="text-black text-sm mb-2">
-            Reward: {quest.reward} {quest.tokenName}
-          </p>
-          <p className="text-black text-sm mb-2">
-            Deadline: {new Date(quest.deadline).toLocaleDateString()}
-          </p>
-          <p className="text-black text-sm mb-2">
-            Your Points: {userProgress?.pointsCollected || 0}
-          </p>
-          <p className="text-black text-sm mb-4">
-            Eligible Reward: {eligiblePoints} {quest.tokenName} (based on {userProgress?.pointsCollected || 0} / {totalPoints} total points)
-          </p>
-
-          <div className="space-y-4 mt-6">
-            <h2 className="text-xl font-semibold text-black">Tasks</h2>
-            {quest.tasks && quest.tasks.length > 0 ? (
-              quest.tasks.map((task, index) => {
-                const isCompleted = userProgress?.tasksCompleted.some((t) => t.taskIndex === index);
-                const isTwitterTask = ["follow twitter", "retweet tweet", "like tweet"].includes(
-                  task.taskType.toLowerCase()
-                );
-                const isDiscordTask = task.taskType.toLowerCase() === "join discord";
-                const isVisitTask = ["visit website", "check visit website"].includes(
-                  task.taskType.toLowerCase()
-                );
-
-                return (
-                  <div
-                    key={index}
-                    className="border border-gray-200 bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <h3 className="font-semibold text-black">{task.taskType}</h3>
-                    <p className="text-black text-sm mt-1">
-                      {isTwitterTask
-                        ? `Visit the Twitter account or tweet to complete this task.`
-                        : isDiscordTask
-                        ? `Join the Discord server to complete this task.`
-                        : isVisitTask
-                        ? `Visit the website to complete this task.`
-                        : `Complete the task at: ${task.link}`}
-                    </p>
-                    <p className="text-black text-sm mt-1">Points: {task.points}</p>
-                    <div className="mt-3 flex gap-3">
-                      {!isCompleted && (
-                        <button
-                          onClick={() => handleTaskRedirect(task)}
-                          className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors"
-                          disabled={isQuestExpired}
-                        >
-                          {isTwitterTask
-                            ? "Go to Twitter"
-                            : isDiscordTask
-                            ? "Join Discord"
-                            : isVisitTask
-                            ? "Visit Website"
-                            : "Go to Task"}
-                        </button>
-                      )}
-                      {isCompleted ? (
-                        <p className="text-black font-semibold">Completed</p>
-                      ) : (
-                        <button
-                          onClick={() => handleTaskSubmit(index, task)}
-                          disabled={
-                            isQuestExpired ||
-                            submitting ||
-                            (isTwitterTask && !userData?.twitterUsername) ||
-                            (isDiscordTask && !userData?.discordUsername) ||
-                            (isVisitTask && !userData?.walletAddress)
-                          }
-                          className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                        >
-                          {submitting ? "Submitting..." : "Verify Task"}
-                        </button>
-                      )}
-                    </div>
-                    {isTwitterTask && !userData?.twitterUsername && (
-                      <p className="text-black text-sm mt-2">
-                        Please add your Twitter username in your profile to verify this task.
-                      </p>
-                    )}
-                    {isDiscordTask && !userData?.discordUsername && (
-                      <p className="text-black text-sm mt-2">
-                        Please add your Discord username in your profile to verify this task.
-                      </p>
-                    )}
-                    {isVisitTask && !userData?.walletAddress && (
-                      <p className="text-black text-sm mt-2">
-                        Please connect your wallet to verify this task.
-                      </p>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-black text-sm">No tasks available.</p>
-            )}
-          </div>
-
-          <div className="mt-6 flex gap-4">
-            <Link
-              href="/quest"
-              className="inline-block px-6 py-2 bg-gray-200 text-black font-semibold rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Back to Quests
-            </Link>
-            <Link
-              href={`/quest/${quest.id}/claim`}
-              className="inline-block px-6 py-2 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              Go to Claim Rewards
-            </Link>
+            <div className="py-1">
+              <button className={`btn btn-${isQuestExpired ? 'secondary cursor-not-allowed' : 'success cursor-pointer'} btn-block`}>
+                🏆 Claim <strong>{eligiblePoints} {quest.tokenName}</strong> Rewards
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      <ToastContainer position="bottom-right" autoClose={3000} />
-    </div>
+      <div className="cursor-pointer w-full pb-10 overflow-hidden px-40">
+        <Link href="/quests" className="card image-full h-auto rounded-xl">
+          <img
+            src="/img/bg-hero.svg"
+            alt="Quests"
+            className="w-full h-48 object-cover bg-opacity-10 rounded-2xl"
+          />
+          <div className="p-10 w-full text-end z-50 space-y-2 flex items-center justify-start">
+            <div className="space-y-2">
+              <span className="font-semibold text-4xl bg-gradient-to-r from-sky-400 to-indigo-600 bg-clip-text text-transparent break-words whitespace-nowrap">Rewards :
+                <span className="text-white ml-2">{quest.reward} {quest.tokenName}</span>
+              </span>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <p className="font-medium text-start text-gray-300">Eligible Reward</p>
+                  <p className="font-medium text-start text-gray-300">{userProgress?.pointsCollected || 0} / {totalPoints} Points</p>
+                </div>
+                <progress className="progress progress-info w-full bg-white" value={userProgress?.pointsCollected || 0} max={totalPoints}></progress>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Task List */}
+      <div className="space-y-3 px-40">
+        <h2 className="text-2xl font-semibold text-black">Your Task</h2>
+        <div className="space-y-4">
+          {quest.tasks && quest.tasks.length > 0 ? (
+            quest.tasks.map((task, index) => {
+              const isCompleted = userProgress?.tasksCompleted.some((t) => t.taskIndex === index);
+              const isTwitterTask = ["follow twitter", "retweet tweet", "like tweet"].includes(
+                task.taskType.toLowerCase()
+              );
+              const isDiscordTask = task.taskType.toLowerCase() === "join discord";
+              const isVisitTask = ["visit website", "check visit website"].includes(
+                task.taskType.toLowerCase()
+              );
+
+              return (
+                <button
+                  key={index}
+                  onClick={
+                    isQuestExpired && !isCompleted && (
+                      () => handleTaskRedirect(task)
+                    )}
+                  className={`flex justify-between w-full items-center 
+                    ${isQuestExpired ? 'cursor-not-allowed' : 'cursor-pointer'}
+                     bg-white text-black p-4 sm:p-5 rounded-xl border border-[#487eb0] hover:shadow-[0_4px_0px_0px_#487eb0] transition-shadow`}>
+
+                  <div className="flex items-center gap-3">
+
+                    <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center">
+                      {isTwitterTask ? <FaXTwitter className="text-black" /> :
+                        isDiscordTask ? <FaDiscord className="text-indigo-600" /> :
+                          <FaFirefoxBrowser className="text-orange-400" />}
+                    </div>
+
+                    <p className="font-semibold text-xl sm:text-base pt-1">
+                      {isTwitterTask
+                        ? `Visit the Twitter account or tweet`
+                        : isDiscordTask
+                          ? `Join the Discord server`
+                          : isVisitTask
+                            ? `Visit the website`
+                            : `Complete the task at: ${task.link}`}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2 items-center justify-center">
+
+                    <div className="flex items-center gap-2 border bg-transparent border-[#487eb0] text-[#487eb0] px-3 pt-2 pb-1 rounded-full font-bold">
+                      🏆  +{task.points}
+                    </div>
+
+                    <div className="tooltip" data-tip="Verify Task!">
+                      <button
+                        onClick={() => handleTaskSubmit(index, task)}
+                        className={`btn btn-sm align-middle text-white rounded-full 
+                          ${isQuestExpired ||
+                            submitting ||
+                            (isTwitterTask && !userData?.twitterUsername) ||
+                            (isDiscordTask && !userData?.discordUsername) ||
+                            (isVisitTask && !userData?.walletAddress) ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-500 cursor-pointer'}`}>
+                        {isCompleted ? <FaCheckCircle /> : <FaStopCircle />}
+
+                        <span className="pt-1">{isCompleted ? 'Completed' : 'Not Completed'}</span>
+
+                      </button>
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="space-y-3 text-center">
+              <DotLottieReact
+                src="https://lottie.host/89b50d27-5c5d-4a02-a9db-9a27c70b1f02/dMVHCVr6S0.lottie"
+                loop
+                autoplay
+                style={{ width: "20%", maxWidth: "100%", margin: "0 auto" }}
+              />
+              <p className="text-black text-lg">No tasks available.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ToastContainer position="top-right" autoClose={3000} />
+    </section>
   );
 }
