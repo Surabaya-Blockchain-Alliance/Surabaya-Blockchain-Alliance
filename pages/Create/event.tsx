@@ -2,16 +2,17 @@ import { useState, useEffect } from "react";
 import { getAssetInfoFromTx, getAssetOwner } from "@/utils/indexing";
 import { BrowserWallet, Transaction, ForgeScript } from "@meshsdk/core";
 import { uploadFile } from "../../utils/upload";
-import { FaWallet } from "react-icons/fa";
-import { BsArrowLeft } from "react-icons/bs";
-import { Teko } from "next/font/google";
+import { FaCalendarCheck, FaGoogle, FaVideo, FaWallet } from "react-icons/fa";
 import Link from "next/link";
-import Footer from "@/components/footer";
-import Navbar from "@/components/navbar";
+import Select from "react-select";
 import { auth, db } from "../../config";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/router";
 import { v4 as uuidv4 } from "uuid";
+import ImageWithFallback from "@/components/image-fallback";
+import LoadingScreen from "@/components/loading-screen";
+import AlertMessage from "@/components/alert-message";
+import TagsInput from "@/components/tags";
 
 const timezones = [
   { value: "UTC", label: "UTC" },
@@ -22,12 +23,6 @@ const timezones = [
   { value: "Asia/Tokyo", label: "Tokyo (JST)" },
   { value: "Australia/Sydney", label: "Sydney (AEST/AEDT)" },
 ];
-
-// Font
-const geistTeko = Teko({
-  variable: "--font-geist-teko",
-  subsets: ["latin"],
-});
 
 const paymentRecipient =
   process.env.PAYMENT_RECIPIENT_ADDRESS ||
@@ -62,6 +57,7 @@ export default function MintNFTPage() {
   const [form, setForm] = useState({
     name: "",
     image: "",
+    fee: "",
     date: "",
     time: "",
     description: "",
@@ -80,6 +76,41 @@ export default function MintNFTPage() {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
+
+  const platformOptions = [
+    {
+      value: "gmeet",
+      label: "Google Meet",
+      icon: (
+        <svg height="20" viewBox="0 0 48 48" width="20" xmlns="http://www.w3.org/2000/svg">
+          <rect fill="#fff" height="16" transform="rotate(-90 20 24)" width="16" x="12" y="16" />
+          <polygon fill="#1e88e5" points="3,17 3,31 8,32 13,31 13,17 8,16" />
+          <path d="M37,24v14c0,1.657-1.343,3-3,3H13l-1-5l1-5h14v-7l5-1L37,24z" fill="#4caf50" />
+          <path d="M37,10v14H27v-7H13l-1-5l1-5h21C35.657,7,37,8.343,37,10z" fill="#fbc02d" />
+          <path d="M13,31v10H6c-1.657,0-3-1.343-3-3v-7H13z" fill="#1565c0" />
+          <polygon fill="#e53935" points="13,7 13,17 3,17" />
+          <polygon fill="#2e7d32" points="38,24 37,32.45 27,24 37,15.55" />
+          <path d="M46,10.11v27.78c0,0.84-0.98,1.31-1.63,0.78L37,32.45v-16.9l7.37-6.22C45.02,8.8,46,9.27,46,10.11z" fill="#4caf50" />
+        </svg>
+      ),
+    },
+    {
+      value: "zoom",
+      label: "Zoom",
+      icon: (
+        <svg height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="zoom-gradient" x1="0.952" x2="497.137" y1="511.048" y2="14.862" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#0079ff" />
+              <stop offset="1" stopColor="#00c2ff" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#zoom-gradient)" d="M256,0C114.615,0,0,114.615,0,256S114.615,512,256,512,512,397.385,512,256,397.385,0,256,0Zm65.382,328.892a9.268,9.268,0,0,1-9.267,9.268H155.145a45.812,45.812,0,0,1-45.812-45.812V183.108a9.268,9.268,0,0,1,9.268-9.268h156.97a45.811,45.811,0,0,1,45.811,45.811Zm81.285,3.235a4.219,4.219,0,0,1-6.659,3.442l-66.656-47.233V223.663l66.656-47.233a4.22,4.22,0,0,1,6.659,3.443Z" />
+        </svg>
+      ),
+    },
+  ];
+
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
@@ -149,6 +180,18 @@ export default function MintNFTPage() {
     }
   };
 
+  const handleTagsChange = (tags) => {
+    let tagsArray = [];
+    if (Array.isArray(tags)) {
+      tagsArray = tags;
+    } else if (typeof tags === "string") {
+      tagsArray = tags.split(",").map(t => t.trim()).filter(t => t.length > 0);
+    }
+    setForm((prev) => ({ ...prev, tags: tagsArray.join(",") }));
+    console.log("tags : " + form.tags)
+  };
+
+
   useEffect(() => {
     if (form.date && form.time && form.platform) {
       const meetLink = generateMeetLink(form.platform, form.date, form.time);
@@ -162,8 +205,8 @@ export default function MintNFTPage() {
       platform === "zoom"
         ? Math.floor(1000000000 + Math.random() * 9000000000).toString()
         : `${Math.random().toString(36).substring(2, 5)}-${Math.random()
-            .toString(36)
-            .substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+          .toString(36)
+          .substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
     return platform === "zoom"
       ? `https://zoom.us/j/${randomKey}`
       : `https://meet.google.com/${randomKey}`;
@@ -207,7 +250,6 @@ export default function MintNFTPage() {
     try {
       setLoading(true);
       setStatus("⏳ Preparing transaction...");
-      const idToken = await user.getIdToken();
       const balance = await wallet.getBalance();
       const lovelace = balance.find((asset) => asset.unit === "lovelace")?.quantity || "0";
       if (parseInt(lovelace) < 10_000_000) {
@@ -263,7 +305,7 @@ export default function MintNFTPage() {
       if (!assetOwner) {
         throw new Error("Unable to retrieve asset fingerprint.");
       }
-      const eventId = uuidv4(); 
+      const eventId = uuidv4();
       const nftData = {
         id: eventId,
         creator: address,
@@ -275,26 +317,14 @@ export default function MintNFTPage() {
         link: form.meetLink,
         time: eventDateTime,
         timestamp: new Date().toISOString(),
-        assetName: form.name, 
+        assetName: form.name,
         policyId: asset.policyId,
       };
 
-      await setDoc(doc(db, "nft-images", eventId), nftData); 
+      await setDoc(doc(db, "nft-images", eventId), nftData);
       const txLink = `https://preview.cexplorer.io/tx/${txHash}`;
       const shortTxHash = `${txHash.slice(0, 6)}...${txHash.slice(-4)}`;
-      setStatus(
-        <>
-          ✅ Event Created! <span className="font-mono">{shortTxHash}</span>{" "}
-          <a
-            href={txLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
-          >
-            View Transaction
-          </a>
-        </>
-      );
+      setStatus(`✅ Event Created! ${shortTxHash} View Transaction: ${txLink}`);
     } catch (error) {
       console.error("Minting error:", error);
       setStatus(`❌ Error: ${error.message}`);
@@ -318,197 +348,273 @@ export default function MintNFTPage() {
       src = `https://sapphire-managing-narwhal-834.mypinata.cloud/ipfs/${imageUrl}`;
     }
 
-    return (
-      <div className="mt-2 relative h-32">
-        <img
-          src={src}
-          alt="Uploaded preview"
-          className="h-full w-full object-contain border rounded"
-          onError={(e) => {
-            e.target.style.display = "none";
-            e.target.nextSibling.style.display = "flex";
-          }}
-          onLoad={(e) => {
-            e.target.style.display = "block";
-            e.target.nextSibling.style.display = "none";
-          }}
-        />
-        <div
-          className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-600 border rounded"
-          style={{ display: "none" }}
-        >
-          <span>Failed to load image</span>
-        </div>
-      </div>
-    );
+    return <ImageWithFallback src={src} />
   };
 
-  const bgImage =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
-
   if (checkingAuth) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <LoadingScreen />;
   }
   if (!user) {
     return null;
   }
 
   return (
-    <div
-      className="relative min-h-screen flex flex-col text-black overflow-hidden bg-white"
-      style={{
-        backgroundImage: `url(${bgImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      <div className="absolute inset-0 bg-white/70 z-0"></div>
-      <Navbar />
-      <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Link
-            className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center"
-            href="/"
-          >
-            <BsArrowLeft className="text-xs" />
-            <span className={`font-semibold ${geistTeko.variable}`}>Create Your Event NFT</span>
-          </Link>
+    <section className="relative min-h-screen flex flex-col text-black overflow-hidden bg-white">
+      <div className="flex justify-between gap-10 px-40">
+        <div className="space-y-3 w-full">
+          <div className="card bg-base-100 image-full h-96 w-full shadow-none">
+            <figure>
+              {form.image && <div className="h-full">{renderImage(form.image)}</div>}
+            </figure>
+            <div className="card-body flex flex-col h-full">
 
-          <h1 className="text-5xl font-bold leading-tight">
-            <span className="text-gray-900">Mint Your</span>{" "}
-            <span className="text-green-500">Event NFT</span>
-          </h1>
-          <p className="text-gray-600 font-medium text-lg">
-            Create Event NFTs for your events for a fee of 10 ADA.
-          </p>
+              {/* Title & Description */}
+              <div className="flex flex-col justify-start items-start space-y-2 mt-auto">
+                <div className="space-y-1">
+                  <h2 className="card-title gap-3 text-4xl">
+                    {form.name || "Event Name Preview"}
+                  </h2>
+                  <p>{form.description || "Event Description Preview"}</p>
+                </div>
 
-          <div className="space-y-4 text-left">
-            {[
-              "name",
-              "image",
-              "date",
-              "time",
-              "timezone",
-              "platform",
-              "meetLink",
-              "description",
-              "fee",
-              "tags",
-            ].map((field) => (
-              <div className="form-control" key={field}>
-                <label className="label text-black capitalize">
-                  {field === "meetLink"
-                    ? `${form.platform === "zoom" ? "Zoom" : "Google Meet"} Link`
-                    : field === "platform"
-                    ? "Meeting Platform"
-                    : field}
-                </label>
-                {field === "image" ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/gif"
-                      onChange={handleImageUpload}
-                      className="file-input file-input-bordered w-full bg-transparent"
-                      disabled={loading}
-                    />
-                    {form.image && <>{renderImage(form.image)}</>}
-                    {loading && (
-                      <div className="mt-2 flex justify-center">
-                        <svg className="animate-spin h-5 w-5 text-gray-600" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ) : field === "platform" ? (
-                  <select
-                    name={field}
-                    value={form.platform}
-                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                    className="select select-bordered w-full bg-transparent"
-                    disabled={loading}
-                  >
-                    <option value="gmeet">Google Meet</option>
-                    <option value="zoom">Zoom</option>
-                  </select>
-                ) : field === "timezone" ? (
-                  <select
-                    name={field}
-                    value={form.timezone}
-                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                    className="select select-bordered w-full bg-transparent"
-                    disabled={loading}
-                  >
-                    {timezones.map((tz) => (
-                      <option key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type={
-                      field === "date"
-                        ? "date"
-                        : field === "time"
-                        ? "time"
-                        : field === "meetLink"
-                        ? "url"
-                        : "text"
-                    }
-                    name={field}
-                    placeholder={
-                      field === "date" || field === "time"
-                        ? ""
-                        : field === "meetLink"
-                        ? form.platform === "zoom"
-                          ? "https://zoom.us/j/..."
-                          : "https://meet.google.com/..."
-                        : `Enter ${field}`
-                    }
-                    value={form[field]}
-                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                    className="input input-bordered w-full bg-transparent"
-                    disabled={loading}
-                  />
-                )}
+                <div className="flex gap-4">
+                  {/* Date & Time */}
+                  {(form.date && form.time) && (
+                    <button className="btn btn-sm btn-outline-primary text-blue-800">
+                      <FaCalendarCheck />
+                      <span className="pt-1">
+                        {new Date(`${form.date}T${form.time}`).toLocaleString("en-US", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                          timeZone: form.timezone || "UTC",
+                        })}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Enter Room */}
+                  {form.meetLink && (() => {
+                    const platform = platformOptions.find((opt) => opt.value === form.platform);
+                    return platform ? (
+                      <Link className={`btn btn-sm ${platform.value == 'zoom' ? 'btn-white': 'btn-primary'}`} target="_blank" href={form.meetLink}>
+                        {platform.icon}
+                        <span className="pt-1">{platform.label}</span>
+                      </Link>
+                    ) : null;
+                  })()}
+
+                </div>
               </div>
-            ))}
+            </div>
+          </div>
 
+          <div className="w-full">
+            {/* Wallet Button */}
             <button
               onClick={() => setShowWalletModal(true)}
-              className="btn border border-black text-white hover:bg-black hover:text-white w-full mt-4 flex items-center justify-center gap-2"
+              className="btn border border-black text-white bg-gray-700 hover:bg-black hover:text-white w-full mt-4 flex items-center justify-center gap-2"
               disabled={loading}
             >
               <FaWallet />
-              {walletAddress
-                ? `Connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-                : "Connect Wallet"}
+              <span className="pt-1">
+                {walletAddress
+                  ? `${walletAddress.slice(0, 10)}...${walletAddress.slice(-10)}`
+                  : "Connect Wallet"}
+              </span>
             </button>
 
+            {/* Mint Button */}
             {walletAddress && (
               <button
                 onClick={handleSignMinter}
-                className="btn bg-black text-white border-none hover:bg-gray-800 w-full mt-2"
+                className="btn bg-blue-600 cursor-pointer text-white border-none hover:bg-blue-800 w-full mt-2"
                 disabled={loading}
               >
-                {loading ? "Minting..." : "Mint NFT (10 ADA)"}
+                {loading ? "Minting..." : "Mint NFT [10 ₳]"}
               </button>
-            )}
-
-            {status && (
-              <div className="alert alert-info mt-2">
-                <span>{status}</span>
-              </div>
             )}
           </div>
         </div>
-      </main>
-      <Footer />
 
+        {/* Form Event Created */}
+        <div className="card w-full mx-auto space-y-6 pb-4">
+          {status && <AlertMessage message={status} />}
+          <div className="py-4 overflow-y-scroll">
+            <h1 className="text-5xl font-bold">
+              <span className="text-gray-900">Mint Your</span>{" "}
+              <span className="text-green-500">Event NFT</span>
+            </h1>
+            <p className="text-gray-600 font-medium text-lg">
+              Create Event NFTs for your events for a fee of 10 ADA.
+            </p>
+          </div>
+
+          <div className="space-y-4 text-left">
+            {/* Name */}
+            <div className="form-control">
+              <label className="label text-black capitalize">Event Name</label>
+              <input
+                type="text"
+                name="name"
+                placeholder="Enter event name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="input input-bordered w-full bg-transparent"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Image */}
+            <div className="form-control">
+              <label className="label text-black capitalize">
+                Event Banner  {loading && (
+                  <span className="loading loading-dots loading-lg"></span>
+                )}
+              </label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif"
+                onChange={handleImageUpload}
+                className="file-input file-input-bordered w-full bg-transparent"
+                disabled={loading}
+              />
+
+            </div>
+
+            <div className="flex justify-between gap-2">
+              {/* Date */}
+              <div className="form-control w-full">
+                <label className="label text-black capitalize">Date</label>
+                <input
+                  type="date"
+                  name="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="input input-bordered w-full bg-transparent"
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Time */}
+              <div className="form-control w-full">
+                <label className="label text-black capitalize">Time</label>
+                <input
+                  type="time"
+                  name="time"
+                  value={form.time}
+                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                  className="input input-bordered w-full bg-transparent"
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Timezone */}
+              <div className="form-control w-full">
+                <label className="label text-black capitalize">Timezone</label>
+                <select
+                  name="timezone"
+                  value={form.timezone}
+                  onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                  className="select select-bordered w-full bg-transparent"
+                  disabled={loading}
+                >
+                  {timezones.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Platform */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="form-control">
+                <label className="label text-black capitalize">
+                  Conference Call
+                </label>
+                <Select
+                  options={platformOptions}
+                  value={platformOptions.find((opt) => opt.value === form.platform)}
+                  onChange={(selected) => setForm({ ...form, platform: selected.value })}
+                  isDisabled={loading}
+                  formatOptionLabel={({ label, icon }) => (
+                    <div className="flex items-center gap-2">
+                      {icon}
+                      <span className="pt-1">{label}</span>
+                    </div>
+                  )}
+                  className="react-select-container select-lg px-0"
+                  classNamePrefix="react-select"
+                />
+              </div>
+
+
+              {/* Meet Link */}
+              <div className="form-control col-span-2">
+                <label className="label text-black capitalize">
+                  {form.platform === "zoom" ? "Zoom" : "Google Meet"} Link
+                </label>
+                <input
+                  type="url"
+                  name="meetLink"
+                  placeholder={
+                    form.platform === "zoom"
+                      ? "https://zoom.us/j/..."
+                      : "https://meet.google.com/..."
+                  }
+                  value={form.meetLink}
+                  onChange={(e) => setForm({ ...form, meetLink: e.target.value })}
+                  className="input input-bordered w-full bg-transparent"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+
+            {/* Description */}
+            <div className="form-control">
+              <label className="label text-black capitalize">Description</label>
+              <textarea
+                name="description"
+                rows={5}
+                placeholder="Enter event description"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="textarea border-gray-300"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Fee */}
+            <div className="form-control">
+              <label className="label text-black capitalize">Fee</label>
+              <input
+                type="number"
+                name="fee"
+                placeholder="Enter fee"
+                value={form.fee}
+                onChange={(e) => setForm({ ...form, fee: e.target.value })}
+                className="input input-bordered w-full bg-transparent"
+                disabled={loading}
+              />
+            </div>
+
+            <TagsInput
+              form={{ tags: form.tags }}
+              setForm={(updatedForm) => handleTagsChange(updatedForm.tags)}
+              loading={loading}
+            />
+
+
+
+          </div>
+        </div>
+
+      </div>
+
+
+      {/* Modal Connect Wallet */}
       {showWalletModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg shadow-xl text-center space-y-4 max-w-md w-full">
@@ -535,7 +641,8 @@ export default function MintNFTPage() {
             </button>
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </section >
   );
 }

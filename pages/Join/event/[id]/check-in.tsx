@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../../../../config";
-import { Teko } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Navbar from "@/components/navbar";
@@ -9,11 +8,7 @@ import Footer from "@/components/footer";
 import { BsArrowLeft } from "react-icons/bs";
 import { FaCheckCircle } from "react-icons/fa";
 import ConnectWallet from "@/components/button/ConnectWallet";
-
-const geistTeko = Teko({
-  variable: "--font-geist-teko",
-  subsets: ["latin"],
-});
+import LoadingScreen from "@/components/loading-screen";
 
 export default function EventCheckInPage() {
   const [event, setEvent] = useState(null);
@@ -23,7 +18,7 @@ export default function EventCheckInPage() {
   const [checkInStatus, setCheckInStatus] = useState("");
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
-  const [walletAddress, setWalletAddress] = useState(null); 
+  const [walletAddress, setWalletAddress] = useState(null);
   const router = useRouter();
   const { id } = router.query;
 
@@ -104,7 +99,7 @@ export default function EventCheckInPage() {
       const username = userDocSnap.exists()
         ? userDocSnap.data().username || "Anonymous"
         : "Anonymous";
-      const attestation = `attestation-${user.uid}-${Date.now()}`; 
+      const attestation = `attestation-${user.uid}-${Date.now()}`;
       const eligible = !!(event.policyId && event.assetName);
       const merkleTreeProof = "dummy-proof";
 
@@ -141,82 +136,32 @@ export default function EventCheckInPage() {
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
 
   if (loading) {
-    return (
-      <div
-        className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100"
-        style={{
-          backgroundImage: `${bgImage}`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="absolute inset-0 bg-white/70 z-0"></div>
-        <Navbar />
-        <main className="flex-grow w-full text-center py-20 px-6 relative z-10">
-          <div className="flex justify-center">
-            <svg className="animate-spin h-8 w-8 text-gray-600" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
-            </svg>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <LoadingScreen />
   }
 
   if (error || !event) {
     return (
-      <div
-        className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100"
-        style={{
-          backgroundImage: `${bgImage}`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="absolute inset-0 bg-white/70 z-0"></div>
-        <Navbar />
-        <main className="flex-grow w-full text-center py-20 px-6 relative z-10">
-          <div className="alert bg-red-100 text-red-700 p-4 rounded-lg shadow-md">
+      <section className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100">
+        <div className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
+          <div className="alert alert-error mt-2 max-w-4xl mx-auto bg-red-100 text-red-700 p-4 rounded-lg shadow-md">
             <span>{error || "Event not found."}</span>
           </div>
-        </main>
-        <Footer />
-      </div>
+        </div>
+      </section>
     );
   }
 
   return (
-    <div
-      className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100"
-      style={{
-        backgroundImage: `${bgImage}`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      <div className="absolute inset-0 bg-white/70 z-0"></div>
-      <Navbar />
-      <main className="flex-grow w-full text-center py-20 px-6 relative z-10">
+    <section className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100" >
+      <div className="flex-grow w-full text-center py-20 px-6 relative z-10">
         <div className="max-w-4xl mx-auto space-y-6">
-          <Link
-            className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 hover:text-blue-600"
-            href={`/events/${id}`}
-          >
-            <BsArrowLeft className="text-sm" />
-            <span className={`font-semibold ${geistTeko.variable}`}>Back to Event</span>
-          </Link>
 
-          <h1 className={`text-5xl font-bold leading-tight ${geistTeko.variable}`}>
+          <h1 className={`text-5xl font-bold leading-tight`}>
             Check In to {event.title}
           </h1>
 
           <div className="bg-white rounded-lg p-8 shadow-xl space-y-4">
-            <h2 className={`text-2xl font-bold ${geistTeko.variable}`}>{event.title}</h2>
+            <h2 className={`text-2xl font-bold`}>{event.title}</h2>
             <p className="text-base font-medium text-gray-600">{event.description}</p>
 
             <div className="space-y-2 text-left">
@@ -265,11 +210,10 @@ export default function EventCheckInPage() {
 
             {checkInStatus && (
               <div
-                className={`alert mt-2 p-4 rounded-lg ${
-                  checkInStatus.startsWith("✅")
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
+                className={`alert mt-2 p-4 rounded-lg ${checkInStatus.startsWith("✅")
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+                  }`}
               >
                 <span>{checkInStatus}</span>
               </div>
@@ -282,8 +226,8 @@ export default function EventCheckInPage() {
             )}
           </div>
         </div>
-      </main>
+      </div>
       <Footer />
-    </div>
+    </section>
   );
 }

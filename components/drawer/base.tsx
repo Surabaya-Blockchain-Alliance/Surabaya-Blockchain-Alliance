@@ -10,10 +10,11 @@ interface DrawerProps {
     classActiveTab: string;
     classDeactiveTab: string;
     classParent: string;
+    align: string;
     title: string;
 }
 
-const Drawer: React.FC<DrawerProps> = ({ drawerItems, classActiveTab, classDeactiveTab, classParent, title }) => {
+const Drawer: React.FC<DrawerProps> = ({ drawerItems, classActiveTab, classDeactiveTab, classParent, title, align }) => {
     const [activeTab, setActiveTab] = useState(0); 
     const [titles, setTitles] = useState(drawerItems[0]?.label || ""); 
 
@@ -30,7 +31,7 @@ const Drawer: React.FC<DrawerProps> = ({ drawerItems, classActiveTab, classDeact
             <div className="drawer-content">
                 <div className="flex flex-col h-auto w-full">
                     {/* Button container */}
-                    <div className="flex items-center justify-center overflow-x-auto">
+                    <div className={`flex items-center justify-${align} overflow-x-auto`}>
                         <ul className={`flex space-x-3 ${classParent}`}>
                             {drawerItems.map((item, index) => (
                                 <li key={index} className="flex-none ">

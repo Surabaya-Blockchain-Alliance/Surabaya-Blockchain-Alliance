@@ -1,18 +1,12 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../config";
-import { Teko } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
 import { BsArrowLeft } from "react-icons/bs";
 import EventCard from "@/components/card/event";
+import GlowingRings from "@/components/animated/glowing";
 
-const geistTeko = Teko({
-  variable: "--font-geist-teko",
-  subsets: ["latin"],
-});
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
@@ -46,6 +40,7 @@ export default function EventsPage() {
   return (
     <section
       className="relative min-h-screen flex flex-col text-black overflow-hidden bg-white">
+      <GlowingRings />
       <div className="flex-grow w-full pt-5 pb-20 px-6 fade-in relative z-10">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="cursor-pointer w-full pb-10 overflow-hidden">

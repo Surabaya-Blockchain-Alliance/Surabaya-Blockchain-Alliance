@@ -1,5 +1,4 @@
 // components/card/event.tsx
-import Link from "next/link";
 import React from "react";
 
 interface EventCardProps {

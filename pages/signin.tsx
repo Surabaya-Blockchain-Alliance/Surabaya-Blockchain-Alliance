@@ -73,7 +73,7 @@ export default function SignIn(): JSX.Element {
         <div className="flex justify-between items-center w-full gap-20">
           <div className="h-screen bg-white w-full max-w-xl shrink-0 items-center">
             <div className="flex justify-between items-center">
-              <Link href={'/'}>
+              <Link href={'/'} className="cursor-pointer">
                 <img src="/img/logo.png" alt="" className="h-full" width={130} />
               </Link>
               <div className="flex items-center gap-2">

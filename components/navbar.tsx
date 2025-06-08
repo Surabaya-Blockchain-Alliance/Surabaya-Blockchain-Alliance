@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
-import ButtonBase from "./button/base";
 import "@meshsdk/react/styles.css";
-import { MeshProvider } from "@meshsdk/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import LogoIcon from "./logo-icon";
-import { BsArrowRight, BsGear } from "react-icons/bs";
+import { BsArrowRight } from "react-icons/bs";
 import { auth } from "../config";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { FaArrowAltCircleLeft, FaChevronCircleDown, FaChevronDown, FaUser } from "react-icons/fa";
+import LoadingScreen from "./loading-screen";
 
 interface MenuItem {
   label: string;
@@ -22,7 +21,7 @@ const menuItems: MenuItem[] = [
     subMenu: [
       { label: "About", href: "/about", description: "Learn more about our community" },
       { label: "Read Docs", href: "https://comunity-node.gitbook.io/cardanohubindonesia", description: "Find documentation on how to get started" },
-      { label: "Article", href: "/blogpost/dashboard", description: "see and create community article" },
+      { label: "Article", href: "/blogpost/dashboard", description: "See and create community articles" },
     ],
   },
   { label: "Quests", href: "/quests" },
@@ -32,13 +31,84 @@ const menuItems: MenuItem[] = [
 
 const Navbar: React.FC = () => {
   const router = useRouter();
-  const [user, setUser] = useState(null); // State to track user login
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState({
+    username: 'Guest User',
+    twitter: 'jhondoe',
+    discord: 'Jhon Doe',
+    telegram: 'Jhon Doe',
+    bio: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book",
+    walletAddress: '1FfmbHfnpaZjKFvyi1okTjJJusN455paPH',
+    pointsCollected: 0,
+    profilePicture: './img/emblem.png',
+    createdAt: new Date
+  });
+
+  // Auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (!firebaseUser) {
+        router.replace('/signin');
+      } else {
+        setUser(firebaseUser);
+      }
+      setCheckingAuth(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
+
+  // Fetch profile info
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const storedUid = localStorage.getItem('uid');
+      if (!storedUid) {
+        router.push('/');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/get-profile?uid=${storedUid}`);
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+
+        setUserData({
+          username: data.username || 'Not set',
+          twitter: data.twitterUsername || null,
+          discord: data.discordUsername || null,
+          telegram: data.telegram || null,
+          bio: data.bio || null,
+          walletAddress: data.walletAddress || null,
+          pointsCollected: data.points || 0,
+          profilePicture: data.profilePicture || null,
+          createdAt: data.createdAt
+        });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) fetchProfile();
+  }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.clear();
+      router.push('/');
+    } catch (err) {
+      console.error('Logout failed:', err);
+      alert('Logout failed.');
+    }
+  };
+
+  if (checkingAuth || loading) {
+    return <LoadingScreen />;
+  }
+
 
   const renderMenu = (items: MenuItem[], isSubMenu: boolean = false) => {
     return items.map((item, index) => (
@@ -46,9 +116,9 @@ const Navbar: React.FC = () => {
         {item.subMenu ? (
           <details>
             <summary className="font-semibold">{item.label}</summary>
-            <ul className="p-2 bg-white flex items-center justify-between gap-3 z-50">
+            <ul className="p-2 bg-white flex items-center justify-between gap-3 z-50 shadow-lg">
               <div className="cursor-pointer hover:border-gray-200 border-2 border-transparent rounded-2xl transition-all shadow-xl overflow-hidden">
-                <Link href="/community" className="card image-full h-48 rounded-2xl">
+                <Link href="/community" className="card image-full h-56 rounded-2xl">
                   <img
                     src="https://t3.ftcdn.net/jpg/07/00/34/62/360_F_700346277_CecN7LvdCIRGdxjwahHa00gqRqAO6CcG.jpg"
                     alt="Shoes"
@@ -62,7 +132,7 @@ const Navbar: React.FC = () => {
                   </div>
                 </Link>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {renderMenu(item.subMenu)}
               </div>
             </ul>
@@ -91,7 +161,7 @@ const Navbar: React.FC = () => {
     <div className="navbar bg-white rounded-lg shadow-lg">
       <div className="navbar-start">
         <div className="dropdown lg:hidden">
-        <Link href="/" className="btn btn-ghost hover:bg-none rounded-lg">
+          <Link href="/" className="btn btn-ghost hover:bg-none rounded-lg">
             <img
               src="/img/logo.png"
               alt="Menu Icon"
@@ -100,7 +170,7 @@ const Navbar: React.FC = () => {
           </Link>
           <ul
             tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
+            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow-lg"
           >
             {renderMenu(menuItems)}
           </ul>
@@ -142,19 +212,17 @@ const Navbar: React.FC = () => {
         </label>
 
         {user ? (
-          <button
-            onClick={handleProfile}
-            className="bg-black text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
-          >
-            <div className="flex justify-between items-center gap-3">
-              <BsGear className="text-xs" />
-              <span>Profile</span>
-            </div>
-          </button>
+          <div className="dropdown dropdown-hover dropdown-end text-black">
+            <div tabIndex={0} role="button" className="btn m-1 bg-transparent hover:bg-transparent"><span className="pt-1">{userData.username}</span> <FaChevronDown /></div>
+            <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
+              <li><Link href={'/setup'}><FaUser />Profile</Link></li>
+              <li><button onClick={handleLogout}> <FaArrowAltCircleLeft /> Sign Out</button></li>
+            </ul>
+          </div>
         ) : (
           <button
             onClick={handleLogin}
-            className="bg-black text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300"
+            className="bg-black text-white py-2 px-6 rounded-lg hover:bg-gray-700 transition duration-300"
           >
             <div className="flex justify-between items-center gap-3">
               <span>Start Your Journey</span>

@@ -60,7 +60,7 @@ const ConnectWallet = ({ onConnect }) => {
 
       setSelectedWallet({ ...walletInstance, address });
       setIsConnected(true);
-      console.log(`Wallet connected: ${walletId}`, address);
+      console.log(`Wallet   ${walletId}`, address);
       await handleSignAndAuthenticate(walletInstance, address);
     } catch (error) {
       console.error('Error enabling wallet:', error);
@@ -98,7 +98,7 @@ const ConnectWallet = ({ onConnect }) => {
         throw new Error('Signature verification failed.');
       }
       onConnect?.(walletAddress);
-      console.log('Wallet verified and connected:', walletAddress);
+      console.log('Wallet verified and  ', walletAddress);
     } catch (error) {
       console.error('Wallet auth failed:', error);
       alert('Wallet verification failed. Try again.');
@@ -135,9 +135,9 @@ const ConnectWallet = ({ onConnect }) => {
         onClick={handleButtonClick}
         disabled={loading}
       >
-        <span>
+        <span className='pt-1'>
           {isConnected && selectedWallet?.address
-            ? `Connected: ${shortenAddress(selectedWallet.address)}`
+            ? `  ${shortenAddress(selectedWallet.address)}`
             : 'Connect Wallet'}
         </span>
         <FaWallet />

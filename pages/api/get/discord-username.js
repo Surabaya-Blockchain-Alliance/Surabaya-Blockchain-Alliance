@@ -6,13 +6,13 @@ const handler = async (req, res) => {
 
   if (discordSession.username) {
     return res.status(200).json({
-      connected: true,
+        true,
       username: discordSession.username,
     });
   }
 
   return res.status(200).json({
-    connected: false,
+      false,
     username: null,
   });
 };

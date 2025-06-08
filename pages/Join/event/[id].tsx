@@ -1,19 +1,15 @@
 import { useState, useEffect } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "@/config";
-import { Teko } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
-import { FaCheckCircle, FaGift } from "react-icons/fa";
-import { BsArrowLeft } from "react-icons/bs";
+import { FaCalendarCheck, FaCheckCircle, FaChevronLeft, FaCopy, FaGift, FaVideo } from "react-icons/fa";
 import ConnectWallet from "@/components/button/ConnectWallet";
+import LoadingScreen from "@/components/loading-screen";
+import ImageWithFallback from "@/components/image-fallback";
+import AlertMessage from "@/components/alert-message";
+import EventModal from "@/components/tickets/events";
 
-const geistTeko = Teko({
-  variable: "--font-geist-teko",
-  subsets: ["latin"],
-});
 
 const isValidCardanoAddress = (address) => {
   return typeof address === "string" && (address.startsWith("addr1") || address.startsWith("addr_test1"));
@@ -30,6 +26,9 @@ export default function EventDetailsPage() {
   const [userProfile, setUserProfile] = useState({ username: "", walletAddress: "" });
   const [hasJoined, setHasJoined] = useState(false);
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [checkInStatus, setCheckInStatus] = useState("");
+  const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const { id } = router.query;
 
   useEffect(() => {
@@ -110,6 +109,7 @@ export default function EventDetailsPage() {
     }
   };
 
+  // Handler : Join
   const handleJoinEvent = async () => {
     if (!user || !auth.currentUser || user.uid !== auth.currentUser.uid) {
       console.error("Authentication error: User not authenticated or UID mismatch", {
@@ -186,10 +186,106 @@ export default function EventDetailsPage() {
     }
   };
 
+  // Handler : Check In
+  useEffect(() => {
+    if (!id || !user) return;
+
+    const fetchEventAndCheckIn = async () => {
+      try {
+        const docRef = doc(db, "nft-images", id);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+          setError("Event not found.");
+          setLoading(false);
+          return;
+        }
+
+        const eventData = { id: docSnap.id, ...docSnap.data() };
+        setEvent(eventData);
+
+        const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
+        const joinDocSnap = await getDoc(joinDocRef);
+
+        if (joinDocSnap.exists()) {
+          setHasJoined(true);
+          const joinData = joinDocSnap.data();
+          setHasCheckedIn(!!joinData.checkedIn);
+        } else {
+          setHasJoined(false);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching event or join data:", err);
+        setError("Failed to load event or join data.");
+        setLoading(false);
+      }
+    };
+
+    fetchEventAndCheckIn();
+  }, [id, user]);
+
+  const handleCheckIn = async () => {
+    if (!user) {
+      setCheckInStatus("❌ User not authenticated. Please sign in.");
+      return;
+    }
+    if (!hasJoined) {
+      setCheckInStatus("❌ You haven’t joined this event.");
+      return;
+    }
+    if (hasCheckedIn) {
+      setCheckInStatus("❌ You have already checked in.");
+      return;
+    }
+    if (!walletAddress) {
+      setCheckInStatus("❌ Please connect your wallet.");
+      return;
+    }
+
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      const username = userDocSnap.exists()
+        ? userDocSnap.data().username || "Anonymous"
+        : "Anonymous";
+      const attestation = `attestation-${user.uid}-${Date.now()}`;
+      const eligible = !!(event.policyId && event.assetName);
+      const merkleTreeProof = "dummy-proof";
+
+      const metadata = {
+        address: walletAddress,
+        username: username,
+        attestation: attestation,
+        eligible: eligible,
+        merkleTreeProof: merkleTreeProof,
+      };
+
+      const joinDocRef = doc(db, `nft-images/${id}/joined`, user.uid);
+      const updateData = {
+        checkedIn: true,
+        checkInTimestamp: new Date().toISOString(),
+        nftClaimEligible: eligible,
+        metadata: metadata,
+      };
+
+      await updateDoc(joinDocRef, updateData);
+      setHasCheckedIn(true);
+      setCheckInStatus(
+        event.policyId && event.assetName
+          ? "✅ Successfully checked in! You are now eligible to claim your NFT."
+          : "✅ Successfully checked in!"
+      );
+    } catch (error) {
+      console.error("Check-in error:", error);
+      setCheckInStatus(`❌ Error: ${error.message}`);
+    }
+  };
+
   const renderImage = (imageUrl) => {
     if (!imageUrl) {
       return (
-        <div className="h-64 w-full bg-gray-200 flex items-center justify-center text-gray-600 border rounded-lg">
+        <div className="h-full w-full bg-gray-200 flex items-center justify-center text-gray-600 border rounded-lg">
           <span>No Image</span>
         </div>
       );
@@ -202,202 +298,176 @@ export default function EventDetailsPage() {
       src = `https://sapphire-managing-narwhal-834.mypinata.cloud/ipfs/${imageUrl}`;
     }
 
-    return (
-      <div className="relative h-64 w-full">
-        <img
-          src={src}
-          alt="Event image"
-          className="h-full w-full object-cover border rounded-lg"
-          onError={(e) => {
-            e.target.style.display = "none";
-            e.target.nextSibling.style.display = "flex";
-          }}
-          onLoad={(e) => {
-            e.target.style.display = "block";
-            e.target.nextSibling.style.display = "none";
-          }}
-        />
-        <div
-          className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-600 border rounded-lg"
-          style={{ display: "none" }}
-        >
-          <span>Failed to load image</span>
-        </div>
-      </div>
-    );
+    return <ImageWithFallback src={src} />;
   };
 
-  const bgImage =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
 
   if (loading) {
-    return (
-      <div
-        className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100"
-        style={{
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="absolute inset-0 bg-white/70 z-0"></div>
-        <Navbar />
-        <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
-          <div className="flex justify-center">
-            <svg className="animate-spin h-8 w-8 text-gray-600" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
-            </svg>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error || !event) {
     return (
-      <div
-        className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100"
-        style={{
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="absolute inset-0 bg-white/70 z-0"></div>
-        <Navbar />
-        <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
+      <section className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100">
+        <div className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
           <div className="alert alert-error mt-2 max-w-4xl mx-auto bg-red-100 text-red-700 p-4 rounded-lg shadow-md">
             <span>{error || "Event not found."}</span>
           </div>
-        </main>
-        <Footer />
-      </div>
+        </div>
+      </section>
     );
   }
 
+  console.log('check in :' + hasCheckedIn)
+  console.log('check in status :' + checkInStatus)
+
   return (
-    <div
-      className="relative min-h-screen flex flex-col text-black overflow-hidden bg-gray-100"
-      style={{
-        backgroundImage: `url(${bgImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      <div className="absolute inset-0 bg-white/70 z-0"></div>
-      <Navbar />
-      <main className="flex-grow w-full text-center py-20 px-6 fade-in relative z-10">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Link
-            className="bg-transparent animate-pulse rounded-full inline-flex items-center gap-2 text-gray-600 justify-center hover:text-blue-600 transition-colors"
-            href="/Event"
-          >
-            <BsArrowLeft className="text-sm" />
-            <span className={`font-semibold ${geistTeko.variable}`}>Back to Events</span>
-          </Link>
+    <section className="relative min-h-screen flex flex-col text-black overflow-hidden bg-white">
+      {joinStatus && (
+        <div className="px-40">
+          <AlertMessage message={joinStatus} />
+        </div>
+      )}
 
-          <h1 className={`text-5xl font-bold leading-tight ${geistTeko.variable}`}>
-            <span className="text-gray-900">{event.title}</span>
-          </h1>
+      {/* New Design */}
+      <div className="flex flex-col justify-start items-center gap-6 rounded-none py-3">
+        <div className="space-y-4 w-full">
+          <div className="card bg-base-100 image-full h-auto w-full px-40 shadow-none">
+            <figure>
+              {renderImage(event.image)}
+            </figure>
+            <div className="card-body flex flex-col h-full">
+              <div className="flex justify-between items-start">
+                <Link href={"/events"}>
+                  <h2 className="card-title gap-3">
+                    <FaChevronLeft />
+                    <span className="pt-2">Back</span>
+                  </h2>
+                </Link>
+                {hasCheckedIn ? <div className="badge badge-soft badge-success pt-1">Joined</div> : ""}
+              </div>
 
-          <div className="bg-white rounded-lg p-8 shadow-xl space-y-4">
-            {renderImage(event.image)}
-            <h2 className={`text-2xl font-bold ${geistTeko.variable}`}>{event.title}</h2>
-            <p className="text-base font-medium text-gray-600 leading-relaxed">{event.description}</p>
-            <div className="space-y-2 text-left">
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Time:</p>
-                <p className="text-gray-600">
-                  {new Date(event.time).toLocaleString("en-US", {
+              {/* Title & Description */}
+              <div className="flex justify-between items-center mt-auto">
+                <div className="space-y-1">
+                  <h2 className="card-title gap-3 text-4xl">{event.title}</h2>
+                  <p>{event.description}</p>
+                </div>
+                <div className="flex gap-4">
+                  <button className="btn btn-outline-primary text-blue-800"><FaCalendarCheck />
+                    <span className="pt-1">{new Date(event.time).toLocaleString("en-US", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                      timeZone: event.timezone || "UTC",
+                    })}
+                    </span>
+                  </button>
+                  <Link className="btn btn-primary" target="_blank" href={event.link}>
+                    <FaVideo /> <span className="pt-1">Enter Room</span>
+                  </Link>
+                  <ConnectWallet onConnect={handleWalletConnect} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 flex justify-between gap-6 border border-dashed border-gray-400 rounded-lg mx-40">
+            <div className="flex flex-col w-full">
+              <label htmlFor="">Creator Address</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={event.address
+                    ? `${event.address}`
+                    : "Not Provided"}
+                  className="input text-gray-600 placeholder:text-gray-700 w-full"
+                  disabled />
+                <button className="btn bg-black text-white hover:bg-gray-700 rounded-tr-lg rounded-br-lg"><FaCopy /></button>
+              </div>
+            </div>
+            <div className="flex flex-col w-full justify-start items-start">
+              <label htmlFor="">Created At</label>
+              <div className="flex gap-2 text-start w-full">
+                <button className="btn bg-gray-800 w-full text-gray-100"><FaCalendarCheck />
+                  <span className="pt-1">{new Date(event.timestamp).toLocaleString("en-US", {
                     dateStyle: "medium",
                     timeStyle: "short",
                     timeZone: event.timezone || "UTC",
                   })}
-                </p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Meeting Link:</p>
-                <p>
-                  <a
-                    href={event.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
-                    {event.link}
-                  </a>
-                </p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Created At:</p>
-                <p className="text-gray-600">
-                  {new Date(event.timestamp).toLocaleString("en-US", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </p>
-              </div>
-              <div className="flex justify-between">
-                <p className="font-semibold text-gray-800">Creator Address:</p>
-                <p className="text-gray-600">
-                  {event.address
-                    ? `${event.address.slice(0, 6)}...${event.address.slice(-4)}`
-                    : "Not provided"}
-                </p>
+                  </span>
+                </button>
               </div>
             </div>
+          </div>
 
-            <ConnectWallet onConnect={handleWalletConnect} />
+          {/* <div className="divider px-40"></div> */}
+          <div className="flex flex-col w-full justify-start items-start px-40">
+            <div className="flex flex-col space-y-2 gap-2 text-start w-full">
 
-            {walletAddress && (
-              <button
-                onClick={handleJoinEvent}
-                className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2 mt-2"
-                disabled={joinLoading || hasJoined}
-              >
-                {joinLoading ? "Joining..." : hasJoined ? "Joined Event" : "Join Event"}
-              </button>
-            )}
-
-            {hasJoined && (
-              <div className="space-y-2 mt-4">
-                <Link
-                  href={`/join/event/${id}/check-in`}
-                  className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2"
+              {walletAddress && (
+                <button
+                  onClick={handleJoinEvent}
+                  className="btn w-full bg-green-600 text-white hover:bg-green-700 shadow-xl rounded-md flex items-center justify-center gap-2 mt-2"
+                  disabled={joinLoading || hasJoined}
                 >
-                  <FaCheckCircle />
-                  Go to Check-In
-                </Link>
-                {event.policyId && event.assetName && (
-                  <Link
-                    href={`/join/event/${id}/claim`}
-                    className="btn w-full bg-blue-600 text-white hover:bg-blue-700 shadow-xl rounded-md flex items-center justify-center gap-2"
-                  >
-                    <FaGift />
-                    Claim NFT
-                  </Link>
-                )}
-              </div>
-            )}
+                  {joinLoading ?
+                    <span className="loading loading-dots loading-lg"></span> : hasJoined ? "🙌🏻 Already Joined Event" : "Let's Join Event ✌🏻"}
+                </button>
+              )}
 
-            {joinStatus && (
-              <div
-                className={`alert mt-2 p-4 rounded-lg ${
-                  joinStatus.startsWith("✅") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                }`}
-              >
-                <span>{joinStatus}</span>
-              </div>
-            )}
+              {hasJoined && (
+                <div className="flex justify-between items-start w-full gap-4">
+                  <div className="w-full">
+                    <button
+                      className="btn w-full transparent border border-blue-700 text-blue-700 hover:bg-blue-700 hover:text-white shadow-xl rounded-md"
+                      onClick={() => setOpen(true)} >
+                      <FaCheckCircle />
+                      <span className="pt-1">Check In</span>
+                    </button>
+                  </div>
+                  <div className="w-full">
+                    {event.policyId && event.assetName && (
+                      <Link
+                        href={`/join/event/${id}/claim`}
+                        className="btn w-full bg-blue-600 text-white hover:bg-transparent hover:text-blue-700 hover:border-blue-700 shadow-xl rounded-md"
+                      >
+                        <FaGift />
+                        <span className="pt-1">Claim Your NFT</span>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
+
+      {/* Modal Check In */}
+      <EventModal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={event.title}
+        subtitle={event.description}
+        date={new Date(event.time).toLocaleDateString("en-US", {
+          dateStyle: "medium",
+          timeZone: event.timezone || "UTC",
+        })}
+        day={new Date(event.time).toLocaleDateString("en-US", {
+          weekday: "long",
+          timeZone: event.timezone || "UTC",
+        })}
+        time={new Date(event.time).toLocaleTimeString("en-US", {
+          timeStyle: "short",
+          timeZone: event.timezone || "UTC",
+        })}
+        location={event.link}
+        imageUrl={event.image}
+        hasJoined={hasJoined}
+        hasCheckedIn={hasCheckedIn}
+        checkInStatus={hasCheckedIn ? 'Y' : 'N'}
+        walletAddress={walletAddress}
+        handleCheckIn={handleCheckIn} />
+
+    </section>
   );
 }

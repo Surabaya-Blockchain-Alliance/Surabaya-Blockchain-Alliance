@@ -5,13 +5,13 @@ const handler = async (req, res) => {
 
   if (twitterSession.username) {
     return res.status(200).json({
-      connected: true,
+        true,
       username: twitterSession.username,
     });
   }
 
   return res.status(200).json({
-    connected: false,
+      false,
     username: null,
   });
 };

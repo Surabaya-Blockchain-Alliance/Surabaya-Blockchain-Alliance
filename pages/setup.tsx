@@ -4,8 +4,9 @@ import ConnectWallet from '../components/button/ConnectWallet';
 import SocialIcon from '@/components/social-icon';
 import { FaXTwitter } from 'react-icons/fa6';
 import { FaDiscord } from 'react-icons/fa';
-import { BsArrowBarRight, BsArrowDownRightCircle, BsArrowLeftCircle, BsArrowRightCircle, BsCheck2Circle } from 'react-icons/bs';
+import { BsArrowLeftCircle, BsArrowRightCircle, BsCheck2Circle } from 'react-icons/bs';
 import { auth, db, setDoc, doc } from '../config';
+import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 
 export default function ProfileSetup() {
   const [step, setStep] = useState(1);
@@ -17,8 +18,11 @@ export default function ProfileSetup() {
   const [profileImage, setProfileImage] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [user, setUser] = useState(null);
+  const [initStepSet, setInitStepSet] = useState(false); // 🚀 new
+
   const router = useRouter();
 
+  // 🔐 Auth check
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
       if (!firebaseUser) {
@@ -31,8 +35,10 @@ export default function ProfileSetup() {
     return () => unsubscribe();
   }, [router]);
 
+  // 🌐 Fetch social data
   useEffect(() => {
-    if (!user) return;
+    if (!user || initStepSet) return;
+
     const checkConnections = async () => {
       try {
         const twitterRes = await fetch('/api/get/twitter-status', { method: 'GET', credentials: 'include' });
@@ -47,23 +53,32 @@ export default function ProfileSetup() {
         const discordRes = await fetch('/api/get/discord-username', { method: 'GET', credentials: 'include' });
         if (discordRes.ok) {
           const discordData = await discordRes.json();
-          setDiscordUsername(discordData.username);
-          if (discordData.username && !twitterUsername) {
-            setUsername(discordData.username);
+          if (discordData.username) {
+            setDiscordUsername(discordData.username);
+            if (!twitterUsername) setUsername(discordData.username);
           }
         }
+
+        // ✅ Stay on step 3 if any social connected
+        if (!initStepSet && (twitterRes.ok || discordRes.ok)) {
+          setStep(3);
+          setInitStepSet(true);
+        }
+
       } catch (err) {
         console.error('Error checking social connections:', err);
       }
     };
+
     checkConnections();
-  }, [user]);
+  }, [user, twitterUsername, initStepSet]);
 
   const handleProfileSave = async () => {
     if (!walletAddress) {
       alert('Wallet not connected.');
       return;
     }
+
     try {
       setLoading(true);
       const profileData = {
@@ -86,12 +101,28 @@ export default function ProfileSetup() {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result);
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+  
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        const base64Image = reader.result;
+        setProfileImage(base64Image);
+        localStorage.setItem('profileImage', base64Image);
+      }
+      // setProfileImage(reader.result);
+    };
+  
+    reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    const storedImage = localStorage.getItem('profileImage');
+    if (storedImage) {
+      setProfileImage(storedImage);
+    }
+  }, []);
+  
 
   const handleConnectTwitter = async () => {
     try {
@@ -107,6 +138,8 @@ export default function ProfileSetup() {
     window.location.href = '/api/connect/discord';
   };
 
+  console.log('profileImage :' + profileImage)
+
   const steps = [
     {
       title: 'Upload Avatar',
@@ -115,14 +148,14 @@ export default function ProfileSetup() {
           <div className="avatar">
             <div className="w-24 h-24 rounded-lg overflow-hidden">
               {profileImage ? (
-                <img src={profileImage} alt="Profile" className="object-cover w-full h-full" />
+                <img src={profileImage || './img/emblem.png'} alt="Profile" className="object-cover w-full h-full" />
               ) : (
                 <div className="bg-gray-300 w-full h-full flex items-center justify-center text-white">No Image</div>
               )}
             </div>
           </div>
           <div className="space-y-3">
-            <p className='text-sm'>Please choose your specials avatar 🥳</p>
+            <p className='text-sm'>Please choose your special avatar 🥳</p>
             <input type="file" onChange={handleImageChange} accept="image/*" className="file-input file-input-sm file-input-bordered" />
           </div>
         </div>
@@ -169,40 +202,40 @@ export default function ProfileSetup() {
       title: 'Connect Wallet',
       content: (
         <div className="space-y-3 py-5">
-          <ConnectWallet onConnect={(address) => setWalletAddress(address)} />,
+          <ConnectWallet onConnect={(address) => setWalletAddress(address)} />
         </div>
       )
     },
   ];
 
-  if (checkingAuth) return <div className="h-screen flex justify-center items-center text-lg">Checking authentication...</div>;
+  if (checkingAuth) {
+    return (
+      <div className="h-screen flex justify-center items-center text-lg">Checking authentication...</div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-black">
       <div className="flex p-5 gap-5">
+        {/* Sidebar */}
         <div
           className="hidden md:flex max-w-7xl bg-cover bg-center items-center h-screen justify-center text-white rounded-xl"
           style={{ backgroundImage: "url('./img/bg-signin.avif')" }}
         >
           <div className="space-y-4 w-full px-10 text-end">
             <p className="text-sm uppercase tracking-widest">- A Wise Quote -</p>
-            <h1 className="text-4xl font-bold leading-10">
-              Your journey continues here
-            </h1>
-            <p className="text-lg font-semibold text-white/80">
-              Sign in to unlock new possibilities.
-            </p>
+            <h1 className="text-4xl font-bold leading-10">Your journey continues here</h1>
+            <p className="text-lg font-semibold text-white/80">Sign in to unlock new possibilities.</p>
           </div>
         </div>
 
-
+        {/* Main */}
         <div className="flex-1 p-6 bg-white rounded-xl space-y-6">
-          {/* Logo */}
-          <div className=" p-8 flex justify-center">
+          <div className="p-8 flex justify-center">
             <img src="/img/logo.png" alt="logo" width={160} />
           </div>
 
-          {/* Steps Indicator */}
+          {/* Steps UI */}
           <ul className="steps steps-horizontal px-10 w-full">
             {steps.map((s, index) => (
               <li
@@ -215,15 +248,12 @@ export default function ProfileSetup() {
             ))}
           </ul>
 
-          {/* Current Step Content */}
+          {/* Step Content */}
           <div className="flex flex-col items-center justify-center py-2">
             <h2 className="text-2xl font-semibold">{steps[step - 1].title}</h2>
             <div className="w-full">{steps[step - 1].content}</div>
 
-            <div
-              className={`flex items-center w-full gap-2 py-4 ${step === 1 ? 'justify-end' : 'justify-between'
-                }`}
-            >
+            <div className={`flex items-center w-full gap-2 py-4 ${step === 1 ? 'justify-end' : 'justify-between'}`}>
               {step > 1 && (
                 <button className="btn" onClick={() => setStep(step - 1)}>
                   <BsArrowLeftCircle className="mr-1" /> Back
@@ -231,10 +261,7 @@ export default function ProfileSetup() {
               )}
 
               {step < steps.length ? (
-                <button
-                  className="btn bg-black text-white flex items-center"
-                  onClick={() => setStep(step + 1)}
-                >
+                <button className="btn bg-black text-white flex items-center" onClick={() => setStep(step + 1)}>
                   Next <BsArrowRightCircle className="ml-1" />
                 </button>
               ) : (
@@ -252,7 +279,6 @@ export default function ProfileSetup() {
                 </button>
               )}
             </div>
-
           </div>
 
           {/* Footer */}
@@ -267,7 +293,6 @@ export default function ProfileSetup() {
               <SocialIcon href={process.env.URL_TELEGRAM} type="telegram" />
             </nav>
           </footer>
-
         </div>
       </div>
     </div>

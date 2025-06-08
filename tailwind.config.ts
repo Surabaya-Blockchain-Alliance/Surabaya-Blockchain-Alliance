@@ -33,4 +33,7 @@ export default {
     ],
   },
   plugins: [require("daisyui")],
+  experimental: {
+    optimizeUniversalDefaults: true,
+  },
 };

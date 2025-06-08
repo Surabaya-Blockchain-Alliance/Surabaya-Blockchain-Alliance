@@ -13,6 +13,7 @@ import Color from '@tiptap/extension-color';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Head from 'next/head';
+import { FaComment, FaEdit, FaEllipsisV, FaGripLines, FaListAlt, FaPenAlt, FaTelegramPlane, FaTrash, FaTrashAlt } from 'react-icons/fa';
 
 export default function BlogPost() {
   const [post, setPost] = useState<any>(null);
@@ -287,34 +288,40 @@ export default function BlogPost() {
     : '';
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="h-auto bg-gray-100 flex flex-col">
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <Head>
         <title>{post.title}</title>
         <meta name="description" content={post.content?.content?.[0]?.content?.[0]?.text?.slice(0, 150) || 'Blog post'} />
       </Head>
-      <div className="flex-grow flex justify-center px-4 py-10">
+
+      <div className="flex-grow flex justify-center px-4 py-10 gap-6">
         <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-md prose prose-lg">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">{post.title}</h1>
-          <div
-            dangerouslySetInnerHTML={{ __html: contentHtml }}
-            className="text-gray-600"
-            onError={(e) => console.error('Image load error:', e)}
-          />
-          <div className="border-t pt-4 mt-6 flex items-center justify-between">
+          <h1 className="text-4xl font-bold text-gray-900 py-1">{post.title}</h1>
+          <div className="flex items-center justify-between pb-5">
+            {/* Posted Created */}
             <div>
-              <span className="text-sm text-gray-500">Posted by {post.author}</span>
-              <span className="text-sm text-gray-500 ml-4">
-                {post.createdAt?.seconds
-                  ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('en-US', {
-                    dateStyle: 'medium',
-                  })
-                  : 'Unknown date'}
+              <span className="text-sm text-gray-500">
+                By <span className='text-gray-700 font-medium'>{post.author}</span> on
+                <span className='px-1 text-gray-700 font-medium'>
+                  {post.createdAt?.seconds
+                    ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                      dateStyle: 'medium',
+                    })
+                    : ' Unknown date'}
+                </span>
               </span>
             </div>
-            <div className="flex items-center">
+
+            {/* Likes */}
+            <div className="flex items-center justify-center gap-4 cursor-pointer">
+              <div className='flex flex-row text-black gap-2 text-sm pt-1'>
+                <FaComment /> {comments.length} Comments
+              </div>
               <button
                 onClick={handleLike}
-                className={`flex items-center text-sm ${hasLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
+                className={`flex items-center text-sm ${hasLiked ? 'text-red-600 hover:text-gray-700' : 'text-gray-700 hover:text-red-600'
                   }`}
                 disabled={!user}
               >
@@ -331,113 +338,108 @@ export default function BlogPost() {
                     clipRule="evenodd"
                   />
                 </svg>
-                {post.likes || 0} {post.likes === 1 ? 'Like' : 'Likes'}
+                <span className='pt-1'>
+                  {post.likes || 0} {post.likes === 1 ? 'Like' : 'Likes'}
+                </span>
               </button>
             </div>
           </div>
 
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Comments</h2>
+          {/* Contents */}
+          <div
+            className="prose max-w-none prose-img:rounded-lg prose-img:shadow-md overflow-y-scroll max-h-[600px]"
+            dangerouslySetInnerHTML={{ __html: contentHtml }}
+          >
+          </div>
+
+
+        </div>
+
+        <div className="flex flex-col bg-white shadow-lg p-5 rounded-lg max-h-full">
+          <h2 className="text-2xl font-bold text-gray-900 pb-4">
+            Comments ({comments.length})
+          </h2>
+          {/* Comments Form */}
+          <form onSubmit={handleCommentSubmit} className="relative bg-white rounded-xl shadow-sm border flex items-center px-4 py-3">
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={user ? 'Write your comments here…' : 'Please sign in to comment'}
+              className="w-full resize-none bg-transparent text-black placeholder-gray-400 focus:outline-none pr-10"
+              rows={5}
+              disabled={!user}
+            />
+            <button
+              type="submit"
+              disabled={submitting || !user || !comment.trim()}
+              className="absolute right-3 bottom-3 bg-gray-700 hover:bg-gray-900 disabled:bg-gray-400 text-white p-2 rounded-full transition-colors duration-200"
+            >
+              <FaTelegramPlane />
+            </button>
+          </form>
+
+
+
+          {/* Comments List */}
+          <div className="space-y-1 py-4">
             {error && <p className="text-red-600 mb-4">{error}</p>}
+
             {comments.length === 0 ? (
               <p className="text-gray-600">No comments yet. Be the first to comment!</p>
             ) : (
               comments
                 .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                 .map((comment) => (
-                  <div key={comment.id} className="border-b py-4">
-                    <p className="text-gray-600">{comment.content}</p>
-                    <div className="text-sm text-gray-500 mt-2 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <span>By {comment.author}</span>
-                          <span className="ml-4">
+                  <>
+                    <div key={comment.id}>
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-2">
+                          <p className='text-black font-semibold text-sm'>{comment.author}</p>
+                          <p className='text-blue-900 font-semibold text-sm'>
                             {comment.createdAt?.seconds
                               ? new Date(comment.createdAt.seconds * 1000).toLocaleDateString('en-US', {
                                 dateStyle: 'medium',
                               })
                               : 'Unknown date'}
-                            {comment.updatedAt?.seconds && (
-                              <span className="ml-2">(Edited)</span>
-                            )}
-                          </span>
+                          </p>
                         </div>
-                        <button
-                          onClick={() => handleCommentLike(comment.id)}
-                          className={`flex items-center text-sm ${user && comment.likedBy?.includes(user.uid)
-                              ? 'text-red-600'
-                              : 'text-gray-600 hover:text-red-600'
-                            }`}
-                          disabled={!user}
-                        >
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill={user && comment.likedBy?.includes(user.uid) ? 'currentColor' : 'none'}
-                            stroke={user && comment.likedBy?.includes(user.uid) ? 'none' : 'currentColor'}
-                            viewBox="0 0 20 20"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          {comment.likes || 0} {comment.likes === 1 ? 'Like' : 'Likes'}
-                        </button>
+                        <div className="dropdown dropdown-end dropdown-hover text-black">
+                          <div tabIndex={0} role="button" className="btn btn-sm text-sm p-.5 m-1 shadow-none border-none bg-transparent hover:bg-transparent"><FaEllipsisV /></div>
+                          <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-lg">
+                            <li><button onClick={() => handleEditComment(comment.id, comment.content)}><FaPenAlt /><span className='pt-1'>Edit</span></button></li>
+                            <li><button onClick={() => handleDeleteComment(comment.id)}><FaTrashAlt /><span className='pt-1'>Delete</span></button></li>
+                          </ul>
+                        </div>
                       </div>
-                      {user && comment.author === user.username && (
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEditComment(comment.id, comment.content)}
-                            className="text-sm text-blue-600 hover:underline"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="text-sm text-red-600 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                      <p className='text-gray-600 font-medium'>{comment.content}</p>
+                      <button
+                        onClick={() => handleCommentLike(comment.id)}
+                        className={`flex items-center text-sm ${user && comment.likedBy?.includes(user.uid)
+                          ? 'text-red-600'
+                          : 'text-gray-600 hover:text-red-600'}`}
+                        disabled={!user}
+                      >
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill={user && comment.likedBy?.includes(user.uid) ? 'currentColor' : 'none'}
+                          stroke={user && comment.likedBy?.includes(user.uid) ? 'none' : 'currentColor'}
+                          viewBox="0 0 20 20"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                            clipRule="evenodd" />
+                        </svg>
+                        <span className='pt-1'>
+                          {comment.likes || 0} {comment.likes === 1 ? 'Like' : 'Likes'}
+                        </span>
+                      </button>
                     </div>
-                  </div>
+                    <div className="divider"></div>
+                  </>
                 ))
             )}
-
-            <form onSubmit={handleCommentSubmit} className="mt-6">
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder={user ? 'Write your comment...' : 'Please sign in to comment'}
-                className="w-full p-3 border rounded-lg bg-transparent text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={4}
-                disabled={!user}
-              />
-              <button
-                type="submit"
-                disabled={submitting || !user}
-                className="mt-4 bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
-              >
-                {submitting ? 'Submitting...' : editingCommentId ? 'Update Comment' : 'Post Comment'}
-              </button>
-              {editingCommentId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingCommentId(null);
-                    setComment('');
-                    setError('');
-                  }}
-                  className="mt-2 ml-4 text-sm text-gray-600 hover:underline"
-                >
-                  Cancel
-                </button>
-              )}
-            </form>
-            <ToastContainer position="top-right" autoClose={3000} />
           </div>
         </div>
       </div>

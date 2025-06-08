@@ -6,11 +6,14 @@ import SocialIcon from "@/components/social-icon";
 import Link from "next/link";
 import { FaGoogle, FaWallet } from "react-icons/fa";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import WalletLogin from "@/components/button/walletLogin";
 
 export default function SignUp() {
     const currentYear = new Date().getFullYear();
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
 
     const handleGoogleSignUp = async (): Promise<void> => {
         try {
@@ -45,6 +48,11 @@ export default function SignUp() {
         };
     }, []);
 
+    // Function to handle Wallet connection
+    const handleWalletConnect = (address: string) => {
+        setWalletAddress(address);
+    };
+
     const bgImage =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
 
@@ -54,7 +62,9 @@ export default function SignUp() {
                 <div className="flex justify-between items-center w-full gap-20">
                     <div className="h-screen bg-white w-full max-w-xl shrink-0 items-center">
                         <div className="flex justify-between items-center">
-                            <img src="/img/logo.png" alt="" className="h-full" width={130} />
+                            <Link href={'/'} className="cursor-pointer">
+                                <img src="/img/logo.png" alt="" className="h-full" width={130} />
+                            </Link>
                             <div className="flex items-center gap-2">
                                 <p className="text-sm">Already have an account?</p>
                                 <Link href={"/signin"} className="bg-black rounded-lg text-white px-3 py-1.5 text-xs">
@@ -81,9 +91,12 @@ export default function SignUp() {
                             </button>
                         </div> */}
                         <div className="py-1">
-                            <button className="btn w-full bg-black shadow-xl space-x-2 text-white hover:bg-yellow-700 hover:text-white">
-                                <FaWallet /> Connect Wallet
-                            </button>
+                            <WalletLogin
+                                onConnect={handleWalletConnect}
+                                onVerified={(address) => {
+                                    setWalletAddress(address);
+                                }}
+                            />
                         </div>
                         <footer className="footer bg-white text-black items-center sticky bottom-0 top-full">
                             <aside className="grid-flow-col items-center">

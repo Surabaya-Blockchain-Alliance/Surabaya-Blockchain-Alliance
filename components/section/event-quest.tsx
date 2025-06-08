@@ -137,8 +137,7 @@ const Quests: React.FC = () => {
                             classParent='py-1 bg-white bg-opacity-50 rounded-full px-1.5'
                             title='Token Assets'
                             classActiveTab='pb-0 font-semibold rounded-full bg-white px-10 text-gray-700 pt-1.5'
-                            classDeactiveTab='pb-0 pt-1.5 font-semibold rounded-full bg-transparent px-10 text-gray-500'
-                        />
+                            classDeactiveTab='pb-0 pt-1.5 font-semibold rounded-full bg-transparent px-10 text-gray-500' align={"center"}                        />
                     </div>
                 </div>
             </div>
