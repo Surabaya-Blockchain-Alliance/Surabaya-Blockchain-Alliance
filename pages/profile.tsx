@@ -176,9 +176,7 @@ export default function ProfilePage() {
       <img src="./img/bg-signup.avif" alt="" className='h-64 bg-cover' />
       <div className="flex-grow w-full">
         <div className="flex gap-10 px-10 bg-slate-100">
-          {/* Profile Card */}
           <div className="bg-white w-full max-w-sm flex flex-col justify-start items-center rounded-lg py-5 -mt-20 h-screen px-10">
-            {/* Profile Data */}
             <div className="space-y-2 text-center">
               <div className="py-2 flex justify-center">
                 <img
@@ -210,7 +208,6 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            {/* Button Points */}
             <div className="py-3 flex justify-center items-center gap-3">
               <button className="btn px-6 bg-gradient-to-tr from-blue-300 via-blue-400 to-blue-700 text-white hover:bg-blue-500 shadow-xl rounded-full">
                 🏆 {userData.pointsCollected} Points
