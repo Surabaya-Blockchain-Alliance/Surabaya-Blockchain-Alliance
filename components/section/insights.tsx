@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
-import YoutubeCarousel from "../youtube";
+import YoutubeCarousel from "../Youtube";
 import { FaFilm, FaThumbsUp, FaVideo } from "react-icons/fa";
 
 const videos = [
