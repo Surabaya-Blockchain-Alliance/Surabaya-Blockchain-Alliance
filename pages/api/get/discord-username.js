@@ -2,17 +2,16 @@ import { withIronSession } from 'next-iron-session';
 
 const handler = async (req, res) => {
   const discordSession = req.session.get('discord') || {};
-  console.log('Discord session in /api/get/discord-username:', discordSession); // Debug
-
+  console.log('Discord session in /api/get/discord-username:', discordSession); 
   if (discordSession.username) {
     return res.status(200).json({
-        true,
+      connected:  true,
       username: discordSession.username,
     });
   }
 
   return res.status(200).json({
-      false,
+    connected:  false,
     username: null,
   });
 };
