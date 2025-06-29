@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../styles/blobs.css'; 
+import styles from '../../styles/blobs.module.css';
 
 const AnimatedBlobs: React.FC = () => {
   return (
