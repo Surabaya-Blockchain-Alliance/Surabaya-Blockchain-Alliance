@@ -10,6 +10,9 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      fontFamily: {
+        Anek_Devanagari: ['Anek', 'sans-serif'],
+      },
     },
   },
   daisyui: {
@@ -30,4 +33,7 @@ export default {
     ],
   },
   plugins: [require("daisyui")],
+  experimental: {
+    optimizeUniversalDefaults: true,
+  },
 };

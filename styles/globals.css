@@ -19,3 +19,19 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.stroke-text {
+  color: transparent;
+  -webkit-text-stroke: 2px black;
+  text-stroke: 2px black;
+}
+
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeInUp 0.5s ease forwards;
+  opacity: 0;
+}

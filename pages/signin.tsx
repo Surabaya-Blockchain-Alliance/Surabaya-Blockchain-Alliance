@@ -4,11 +4,8 @@ import { auth, provider, signInWithPopup } from '../config';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import WalletLogin from '../components/button/walletLogin';
-import { signInWithCustomToken } from 'firebase/auth';
-import { FaGoogle, FaWallet } from 'react-icons/fa';
-import LogoIcon from '@/components/LogoIcon';
-import SocialIcon from '@/components/SocialIcon';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { FaGoogle } from 'react-icons/fa';
+import SocialIcon from '@/components/social-icon';
 
 interface User {
   email: string;
@@ -62,7 +59,7 @@ export default function SignIn(): JSX.Element {
   useEffect(() => {
     const userUid = localStorage.getItem('uid');
     if (userUid) {
-      router.push('/profile'); 
+      router.push('/profile');
     }
     // Check if wallet address is available (i.e., connected) and redirect
     if (walletAddress) {
@@ -70,23 +67,15 @@ export default function SignIn(): JSX.Element {
     }
   }, [walletAddress, router]);
 
-  const bgImage: string =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
-
   return (
     <div className="min-h-screen">
-      <div className="w-full h-screen text-gray-800">
-        <div
-          className="flex justify-between items-center gap-5"
-          style={{
-            fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            background: `url(${bgImage}) repeat 0 0`,
-            animation: 'bg-scrolling-reverse 0.92s linear infinite',
-          }}
-        >
-          <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10">
+      <div className="flex w-full min-h-screen text-gray-800 bg-white p-5">
+        <div className="flex justify-between items-center w-full gap-20">
+          <div className="h-screen bg-white w-full max-w-xl shrink-0 items-center">
             <div className="flex justify-between items-center">
-              <img src="/img/logo.png" alt="" className="h-full" width={130} />
+              <Link href={'/'} className="cursor-pointer">
+                <img src="/img/logo.png" alt="" className="h-full" width={130} />
+              </Link>
               <div className="flex items-center gap-2">
                 <p className="text-sm">First time on Cardano Hub Indonesia?</p>
                 <Link href="/signup" className="bg-black rounded-lg text-white px-3 py-1.5 text-xs">
@@ -104,7 +93,7 @@ export default function SignIn(): JSX.Element {
                 onClick={handleGoogleSignIn}
                 disabled={loading}
               >
-                <FaGoogle /> {loading ? 'Please wait..' : 'Sign in with Google'}
+                <FaGoogle /> {loading ? <span className="loading loading-dots loading-md"></span> : 'Sign in with Google'}
               </button>
             </div>
             <div className="py-1">
@@ -128,16 +117,19 @@ export default function SignIn(): JSX.Element {
               </nav>
             </footer>
           </div>
-          <div className="bg-transparent text-center p-48">
-            <h1 className="text-4xl font-semibold">
-              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
-            </h1>
-            <DotLottieReact
-              src="https://lottie.host/300794aa-cd62-4cdf-89ac-3463b38d29a7/wVcfBSixSv.lottie"
-              loop
-              autoplay
-            />
-            <p className="text-lg font-medium">Start engaging users and communities!</p>
+          <div
+            className="hidden md:flex w-full bg-cover bg-center items-center h-screen justify-center text-white rounded-xl"
+            style={{ backgroundImage: "url('./img/bg-signin.avif')" }}
+          >
+            <div className="space-y-4 w-full px-10 text-end">
+              <p className="text-sm uppercase tracking-widest">- A Wise Quote -</p>
+              <h1 className="text-4xl font-bold leading-10">
+                Your journey continues here
+              </h1>
+              <p className="text-lg font-semibold text-white/80">
+                Sign in to unlock new possibilities.
+              </p>
+            </div>
           </div>
         </div>
       </div>

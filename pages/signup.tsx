@@ -2,18 +2,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { auth, provider } from '../config';
 import { signInWithPopup } from 'firebase/auth';
-import ButtonBase from "@/components/button/base";
-import LogoIcon from "@/components/LogoIcon";
-import SocialIcon from "@/components/SocialIcon";
+import SocialIcon from "@/components/social-icon";
 import Link from "next/link";
-import { FaGoogle, FaTwitter, FaWallet } from "react-icons/fa";
-import { FaXTwitter } from "react-icons/fa6";
+import { FaGoogle, FaWallet } from "react-icons/fa";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import WalletLogin from "@/components/button/walletLogin";
 
 export default function SignUp() {
     const currentYear = new Date().getFullYear();
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
 
     const handleGoogleSignUp = async (): Promise<void> => {
         try {
@@ -48,23 +48,23 @@ export default function SignUp() {
         };
     }, []);
 
+    // Function to handle Wallet connection
+    const handleWalletConnect = (address: string) => {
+        setWalletAddress(address);
+    };
+
     const bgImage =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC";
 
     return (
         <div className="min-h-screen">
-            <div
-                className="w-full h-screen text-gray-800"
-                style={{
-                    fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-                    background: `url(${bgImage}) repeat 0 0`,
-                    animation: "bg-scrolling-reverse 0.92s linear infinite",
-                }}
-            >
-                <div className="flex justify-between items-center gap-5">
-                    <div className="h-screen bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10">
+            <div className="flex w-full min-h-screen text-gray-800 bg-white p-5">
+                <div className="flex justify-between items-center w-full gap-20">
+                    <div className="h-screen bg-white w-full max-w-xl shrink-0 items-center">
                         <div className="flex justify-between items-center">
-                            <img src="/img/logo.png" alt="" className="h-full" width={130} />
+                            <Link href={'/'} className="cursor-pointer">
+                                <img src="/img/logo.png" alt="" className="h-full" width={130} />
+                            </Link>
                             <div className="flex items-center gap-2">
                                 <p className="text-sm">Already have an account?</p>
                                 <Link href={"/signin"} className="bg-black rounded-lg text-white px-3 py-1.5 text-xs">
@@ -91,9 +91,12 @@ export default function SignUp() {
                             </button>
                         </div> */}
                         <div className="py-1">
-                            <button className="btn w-full bg-black shadow-xl space-x-2 text-white hover:bg-yellow-700 hover:text-white">
-                                <FaWallet /> Connect Wallet
-                            </button>
+                            <WalletLogin
+                                onConnect={handleWalletConnect}
+                                onVerified={(address) => {
+                                    setWalletAddress(address);
+                                }}
+                            />
                         </div>
                         <footer className="footer bg-white text-black items-center sticky bottom-0 top-full">
                             <aside className="grid-flow-col items-center">
@@ -107,17 +110,19 @@ export default function SignUp() {
                             </nav>
                         </footer>
                     </div>
-                    <div className="bg-transparent text-center p-48">
-                        <h1 className="text-4xl font-semibold">
-                            <span className='text-blue-800'>Cardano Hub</span> <span className='text-red-600'>Indonesia</span>
-                        </h1>
-                        <DotLottieReact
-                            src="https://lottie.host/300794aa-cd62-4cdf-89ac-3463b38d29a7/wVcfBSixSv.lottie"
-                            loop
-                            autoplay
-                        />
-                        <p className="text-lg font-medium">Start engage users and communities!</p>
-
+                    <div
+                        className="hidden md:flex w-full bg-cover bg-center items-center h-screen justify-center text-white rounded-xl"
+                        style={{ backgroundImage: "url('./img/bg-signup.avif')" }}
+                    >
+                        <div className="space-y-4 w-full px-10 text-end">
+                            <p className="text-sm uppercase tracking-widest">- A Wise Quote -</p>
+                            <h1 className="text-4xl font-bold leading-10">
+                                Join the Movement
+                            </h1>
+                            <p className="text-lg font-semibold text-white/80">
+                                Start your journey with us today!
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,0 +1,368 @@
+import { useState, useEffect } from 'react';
+import { db, auth } from '@/config';
+import Link from "next/link";
+import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/router';
+import BlogCard from '@/components/blog/blogCard';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { FaGripLines, FaSearch } from 'react-icons/fa';
+import AnimatedBlobs from '@/components/animated/blobs';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import UnderlineButton from '@/components/button/underlined';
+
+const extractDescription = (content: any, maxLength: number = 100): string => {
+  if (!content || !content.content) return 'No description available.';
+
+  let text = '';
+  const traverseContent = (nodes: any[]) => {
+    for (const node of nodes) {
+      if (node.type === 'text' && node.text) {
+        text += node.text + ' ';
+      } else if (node.content) {
+        traverseContent(node.content);
+      }
+    }
+  };
+  traverseContent(content.content);
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text.trim() || 'No description available.';
+};
+
+const extractMediaUrl = (content: any): string | null => {
+  if (!content || !content.content) return null;
+
+  let mediaUrl = null;
+  const traverseContent = (nodes: any[]) => {
+    for (const node of nodes) {
+      if (node.type === 'image' && node.attrs?.src) {
+        mediaUrl = node.attrs.src;
+        return;
+      }
+      if (node.content) {
+        traverseContent(node.content);
+      }
+    }
+  };
+  traverseContent(content.content);
+  return mediaUrl;
+};
+
+export default function BlogDashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
+  const [myPosts, setMyPosts] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.type = 'text/css';
+    styleSheet.innerText = `
+      @keyframes bg-scrolling-reverse {
+        100% { background-position: 50px 50px; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      setUser(firebaseUser);
+      await fetchPosts(firebaseUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchPosts = async (firebaseUser: any) => {
+    setLoading(true);
+    try {
+      const postsRef = collection(db, 'blogposts');
+      const postsSnap = await getDocs(postsRef);
+      const postsData = postsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const sortedPosts = postsData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setPosts(sortedPosts);
+      setFilteredPosts(sortedPosts);
+
+      if (firebaseUser) {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userSnap = await getDoc(userDocRef);
+        const fetchedUsername = userSnap.exists() ? userSnap.data().username : firebaseUser.displayName || 'Anonymous';
+        console.log('Logged-in user UID:', firebaseUser.uid);
+        console.log('Fetched username:', fetchedUsername);
+        console.log('Firebase displayName:', firebaseUser.displayName);
+        console.log('Post details:', postsData.map((post) => ({
+          id: post.id,
+          title: post.title || 'No Title',
+          author: post.author || 'Unknown',
+          createdAt: post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'
+        })));
+        setUsername(fetchedUsername);
+        const userPosts = sortedPosts.filter((post) =>
+          post.author && fetchedUsername && post.author.toLowerCase() === fetchedUsername.toLowerCase()
+        );
+        setMyPosts(userPosts);
+        if (userPosts.length === 0 && fetchedUsername !== 'Anonymous') {
+          toast.warn(`No posts found for username "${fetchedUsername}". Expected author "Alf". Check Firestore user and post data.`);
+        }
+      } else {
+        setMyPosts([]);
+        setUsername(null);
+        toast.info('Sign in to view your posts.');
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      toast.error('Failed to load posts: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setFilteredPosts(posts);
+      toast.info('Displaying all posts.');
+      return;
+    }
+
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    const filtered = posts.filter((post) =>
+      (post.title || '').toLowerCase().includes(lowerCaseQuery)
+    );
+    setFilteredPosts(filtered);
+
+    if (filtered.length === 0) {
+      toast.info('No posts found matching your query.');
+    }
+  };
+
+  const handleDelete = async (postId: string, postAuthor: string) => {
+    if (!user) {
+      toast.error('You must be logged in to delete posts.');
+      return;
+    }
+
+    if (!username) {
+      toast.error('User data not loaded. Please refresh the page.');
+      return;
+    }
+
+    console.log('Attempting to delete post:', { postId, postAuthor, username });
+    if (postAuthor.toLowerCase() !== username.toLowerCase()) {
+      toast.error(`Cannot delete: Post author "${postAuthor}" does not match your username "${username}".`);
+      return;
+    }
+
+    if (confirm('Are you sure you want to delete this post?')) {
+      setLoading(true);
+      try {
+        await deleteDoc(doc(db, 'blogposts', postId));
+        setPosts(posts.filter((post) => post.id !== postId));
+        setFilteredPosts(filteredPosts.filter((post) => post.id !== postId));
+        setMyPosts(myPosts.filter((post) => post.id !== postId));
+        toast.success('Post deleted successfully!');
+      } catch (error: any) {
+        console.error('Error deleting post:', error);
+        if (error.code === 'permission-denied') {
+          toast.error('Permission denied: You are not authorized to delete this post.');
+        } else {
+          toast.error(`Failed to delete post: ${error.message}`);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleEdit = (postId: string) => {
+    router.push(`/blogpost/edit-blog/${postId}`);
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-100">Loading...</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      <AnimatedBlobs />
+
+      <div className="flex-grow flex flex-col justify-center px-40 py-10 z-10">
+        <div className="bg-transparent py-10 text-center">
+          <div className="text-sm text-gray-500 mb-4">
+            <span className="font-semibold text-black">BLOGS</span>
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight flex justify-center flex-wrap gap-4">
+            <span className="text-black">IDEAS</span>
+            <span className="text-yellow-400">THAT
+            </span>
+            <span className="text-black flex items-center">
+              IN
+              <span className="relative inline-block mx-1">
+                <span className="z-10 relative">S</span>
+                <span className="absolute -top-2 left-0 w-full h-full bg-yellow-400 -rotate-12 z-0 rounded-sm" />
+              </span>
+              PIRE
+            </span>
+          </h1>
+        </div>
+
+        <div className="w-full flex gap-6">
+          {/* Left Column: All Posts */}
+          <div className="w-full lg:w-4/7 bg-white p-6 rounded-lg">
+            <form onSubmit={handleSearch} className="mb-6">
+              <div className="flex gap-2 text-black items-center">
+                {/* Search input with icon */}
+                <div className="flex items-center flex-grow bg-white border rounded-full shadow px-4 py-2">
+                  <FaSearch className="text-gray-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search blogs, topics and more"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSearchQuery(value);
+                      applySearch(value);
+                    }}
+                    className="w-full bg-transparent focus:outline-none text-gray-700 placeholder-gray-400"
+                  />
+                </div>
+
+                {/* Dropdown filter */}
+                <div className="relative">
+                  <select
+                    value={filter}
+                    onChange={(e) => handleFilterChange(e.target.value)}
+                    className="px-4 py-2 rounded-lg border bg-white text-sm text-gray-700 shadow focus:outline-none"
+                  >
+                    <option>All Posts</option>
+                    <option>Your Posts</option>
+                    <option>Create New Post</option>
+                  </select>
+                </div>
+              </div>
+            </form>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {filteredPosts.length > 0 ? (
+                filteredPosts.map((post) => (
+                  <div key={post.id} className="relative">
+                    <BlogCard
+                      title={post.title || 'Untitled Post'}
+                      description={extractDescription(post.content)}
+                      mediaUrl={extractMediaUrl(post.content)}
+                      id={post.id}
+                    />
+                    {user && username && post.author && post.author.toLowerCase() === username.toLowerCase() && (
+                      <div className="absolute top-0 right-0 flex gap-2">
+                        <div className="dropdown dropdown-center text-black">
+                          <div tabIndex={0} role="button" className="btn m-1 shadow-none bg-transparent hover:bg-transparent border-0"><FaGripLines /></div>
+                          <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
+                            <li><button onClick={() => handleEdit(post.id)}>Edit</button></li>
+                            <li><button onClick={() => handleDelete(post.id, post.author)}>Delete</button></li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 col-span-full">No posts available.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: My Posts */}
+          <div className="w-1/3 flex justify-start items-start bg-white p-6 rounded-lg shadow-xl">
+            {user ? (
+              myPosts.length > 0 ? (
+                <div>
+                  <h2 className="text-2xl text-black font-bold mb-6">Your Blogs</h2><div className="space-y-6">
+                    {myPosts.map((post) => (
+                      <div key={post.id} className="relative">
+                        <BlogCard
+                          title={post.title || 'Untitled Post'}
+                          description={extractDescription(post.content)}
+                          mediaUrl={extractMediaUrl(post.content)}
+                          id={post.id} />
+                        <div className="absolute top-0 right-0 flex gap-2">
+                          <div className="dropdown dropdown-center text-black">
+                            <div tabIndex={0} role="button" className="btn m-1 shadow-none bg-transparent hover:bg-transparent border-0"><FaGripLines /></div>
+                            <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
+                              <li><button onClick={() => handleEdit(post.id)}>Edit</button></li>
+                              <li><button onClick={() => handleDelete(post.id, post.author)}>Delete</button></li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+
+                <div className='flex flex-col space-y-10'>
+                  <div className="space-y-5">
+                    <p className='font-semibold text-black'>
+                      <div className='text-2xl'>Just Signed Up? </div>
+                      <div className='font-medium text-sm'>
+                        Create Your First Blog and Join the Community!
+                      </div>
+                    </p>
+                    <DotLottieReact
+                      src="https://lottie.host/d4322b22-d9d8-4353-9f53-9c31aa26dc2a/vqA82FXL98.lottie"
+                      loop
+                      autoplay
+                      style={{ width: "100%", maxWidth: "100%" }} />
+                    <p className='font-medium text-black text-center tex-sm'>No posts available.</p>
+                  </div>
+                  <div className="text-center">
+                    <UnderlineButton
+                      href="/blogpost/create"
+                      label="Start Create Post"
+                      textColor="text-black"
+                      underlineColor="bg-black"
+                      iconColor="text-black"
+                    />
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className='flex flex-col space-y-10'>
+                <div className="space-y-5">
+                  <p className='font-semibold text-black'>
+                    <div className='text-2xl'>Ready to Share Your Story? </div>
+                    <div className='font-medium text-sm'>
+                      Log In First to Start Blogging!
+                    </div>
+                  </p>
+                  <DotLottieReact
+                    src="https://lottie.host/d4322b22-d9d8-4353-9f53-9c31aa26dc2a/vqA82FXL98.lottie"
+                    loop
+                    autoplay
+                    style={{ width: "100%", maxWidth: "100%" }} />
+                  <p className='font-medium text-black text-center tex-sm'>No posts available.</p>
+                </div>
+                <div className="text-center">
+                  <UnderlineButton
+                    href="/signin"
+                    label="Signin Now!"
+                    textColor="text-black"
+                    underlineColor="bg-black"
+                    iconColor="text-black"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <ToastContainer position="top-right" autoClose={3000} />
+    </div>
+  );
+}

@@ -1,0 +1,480 @@
+import { useState, useEffect } from "react";
+import { BrowserWallet } from "@meshsdk/core";
+import { uploadFile } from "../../utils/upload";
+import Link from "next/link";
+import { auth } from "../../config";
+import { useRouter } from "next/router";
+import ImageWithFallback from "@/components/image-fallback";
+import LoadingScreen from "@/components/loading-screen";
+import AlertMessage from "@/components/alert-message";
+import TagsInput from "@/components/tags";
+
+const timezones = [
+  { value: "UTC", label: "UTC" },
+  { value: "America/New_York", label: "Eastern Time (US)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (US)" },
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Asia/Jakarta", label: "Jakarta (WIB)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST/AEDT)" },
+];
+
+const paymentRecipient =
+  process.env.PAYMENT_RECIPIENT_ADDRESS ||
+  "addr_test1qzf333svyuyxrt8aajhgjmews0737sf69uvn4xyt4ny2ent88fhr8q5eqrdqfhaqcu4fcd2hqfz6fw4h57jlgzfp6rlsvj37jm";
+
+const policyId = "a727399922a075addd9d2ea1b494feb2b774f721d988e48b92fa89d2";
+
+const stringToHex = (str) =>
+  [...str].map((c) => ("0" + c.charCodeAt(0).toString(16)).slice(-2)).join("");
+
+export default function MintNFTPage() {
+  const [form, setForm] = useState({
+    name: "",
+    image: "",
+    fee: "",
+    date: "",
+    time: "",
+    description: "",
+    tags: "",
+    meetLink: "",
+    platform: "gmeet",
+    timezone: "UTC",
+  });
+  const [wallet, setWallet] = useState(null);
+  const [walletAddress, setWalletAddress] = useState(null);
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [wallets, setWallets] = useState([]);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [uploadInfo, setUploadInfo] = useState({ cid: "", ipfsUrl: "", gatewayUrl: "" });
+  const [user, setUser] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const router = useRouter();
+
+  // Platform options with icons
+  const platformOptions = [
+    {
+      value: "gmeet",
+      label: "Google Meet",
+      icon: (
+        <svg height="20" viewBox="0 0 48 48" width="20" xmlns="http://www.w3.org/2000/svg">
+          <rect fill="#fff" height="16" transform="rotate(-90 20 24)" width="16" x="12" y="16" />
+          <polygon fill="#1e88e5" points="3,17 3,31 8,32 13,31 13,17 8,16" />
+          <path d="M37,24v14c0,1.657-1.343,3-3,3H13l-1-5l1-5h14v-7l5-1L37,24z" fill="#4caf50" />
+          <path d="M37,10v14H27v-7H13l-1-5l1-5h21C35.657,7,37,8.343,37,10z" fill="#fbc02d" />
+          <path d="M13,31v10H6c-1.657,0-3-1.343-3-3v-7H13z" fill="#1565c0" />
+          <polygon fill="#e53935" points="13,7 13,17 3,17" />
+          <polygon fill="#2e7d32" points="38,24 37,32.45 27,24 37,15.55" />
+          <path d="M46,10.11v27.78c0,0.84-0.98,1.31-1.63,0.78L37,32.45v-16.9l7.37-6.22C45.02,8.8,46,9.27,46,10.11z" fill="#4caf50" />
+        </svg>
+      ),
+    },
+    {
+      value: "zoom",
+      label: "Zoom",
+      icon: (
+        <svg height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="zoom-gradient" x1="0.952" x2="497.137" y1="511.048" y2="14.862" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#0079ff" />
+              <stop offset="1" stopColor="#00c2ff" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#zoom-gradient)" d="M256,0C114.615,0,0,114.615,0,256S114.615,512,256,512,512,397.385,512,256,397.385,0,256,0Zm65.382,328.892a9.268,9.268,0,0,1-9.267,9.268H155.145a45.812,45.812,0,0,1-45.812-45.812V183.108a9.268,9.268,0,0,1,9.268-9.268h156.97a45.811,45.811,0,0,1,45.811,45.811Zm81.285,3.235a4.219,4.219,0,0,1-6.659,3.442l-66.656-47.233V223.663l66.656-47.233a4.22,4.22,0,0,1,6.659,3.443Z" />
+        </svg>
+      ),
+    },
+  ];
+
+  // Auth check
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+      } else {
+        router.push("/signin");
+      }
+      setCheckingAuth(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  // Fetch available wallets when user logged in
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchWallets = async () => {
+      try {
+        const availableWallets = await BrowserWallet.getAvailableWallets();
+        setWallets(availableWallets);
+        if (availableWallets.length === 0) {
+          alert("No Cardano wallets found. Please install a wallet like Nami or Eternl.");
+        } else {
+          setShowWalletModal(true);
+        }
+      } catch (error) {
+        console.error("Error fetching wallets:", error);
+        setStatus("❌ Failed to fetch wallets.");
+      }
+    };
+    fetchWallets();
+  }, [user]);
+
+  // Connect wallet handler
+  const handleWalletSelect = async (walletId) => {
+    setShowWalletModal(false);
+    try {
+      const selectedWallet = await BrowserWallet.enable(walletId);
+      const address = await selectedWallet.getChangeAddress();
+      setWallet(selectedWallet);
+      setWalletAddress(address);
+      setStatus("✅ Wallet connected.");
+    } catch (error) {
+      console.error("Wallet connection error:", error);
+      setStatus("❌ Failed to connect wallet.");
+    }
+  };
+
+  // Handle image upload to IPFS
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    setStatus("⏳ Uploading image...");
+
+    try {
+      const { cid, ipfsUrl } = await uploadFile(file);
+      const pinataGatewayUrl = `https://sapphire-managing-narwhal-834.mypinata.cloud/ipfs/${cid}`;
+      setForm((prev) => ({ ...prev, image: pinataGatewayUrl }));
+      setUploadInfo({ cid, ipfsUrl, gatewayUrl: pinataGatewayUrl });
+      setStatus("✅ Image uploaded successfully!");
+    } catch (error) {
+      console.error("Image upload error:", error);
+      setStatus("❌ Image upload failed.");
+    }
+    setLoading(false);
+  };
+
+  // Update form inputs
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle tags input changes
+  const handleTagsChange = (tags) => {
+    setForm((prev) => ({ ...prev, tags: tags.join(",") }));
+  };
+
+  // Mint NFT function
+  const mintNFT = async () => {
+    if (!wallet) {
+      alert("Please connect your wallet first!");
+      return;
+    }
+
+    if (
+      !form.name ||
+      !form.image ||
+      !form.fee ||
+      !form.date ||
+      !form.time ||
+      !form.description
+    ) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("⏳ Preparing to mint NFT...");
+
+    try {
+      const assetNameHex = stringToHex(form.name);
+      const assetFullName = policyId + assetNameHex;
+
+      // Build metadata
+      const metadata = {
+        [policyId]: {
+          [assetNameHex]: {
+            name: form.name,
+            description: form.description,
+            image: form.image,
+            date: form.date,
+            time: form.time,
+            timezone: form.timezone,
+            tags: form.tags ? form.tags.split(",") : [],
+            meetLink: form.meetLink,
+            platform: form.platform,
+          },
+        },
+      };
+
+      // TODO: Add your minting logic here using the wallet SDK
+      // For now, just mock a success
+      setStatus("✅ NFT minted successfully! (This is a mock)");
+    } catch (error) {
+      console.error("Minting error:", error);
+      setStatus("❌ Failed to mint NFT.");
+    }
+
+    setLoading(false);
+  };
+
+  // Render LoadingScreen while checking auth
+  if (checkingAuth) return <LoadingScreen />;
+
+  // If not logged in, no rendering (router pushes to /signin)
+  if (!user) return null;
+
+  return (
+    <main className="container mx-auto max-w-xl p-6">
+      <h1 className="text-3xl font-bold mb-4">Mint NFT</h1>
+
+      {status && (
+        <AlertMessage
+          message={status}
+        />
+      )}
+
+      <div className="mb-4">
+        <label htmlFor="name" className="block font-semibold mb-1">
+          Name <span className="text-red-600">*</span>
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          className="w-full rounded border px-3 py-2"
+          placeholder="Enter NFT name"
+          value={form.name}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="image" className="block font-semibold mb-1">
+          Image <span className="text-red-600">*</span>
+        </label>
+        <input
+          type="file"
+          id="image"
+          name="image"
+          accept="image/*"
+          onChange={handleImageUpload}
+          disabled={loading}
+          required
+          className="w-full"
+        />
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="fee" className="block font-semibold mb-1">
+          Fee (ADA) <span className="text-red-600">*</span>
+        </label>
+        <input
+          type="number"
+          id="fee"
+          name="fee"
+          className="w-full rounded border px-3 py-2"
+          placeholder="Enter fee amount"
+          value={form.fee}
+          onChange={handleChange}
+          min="0"
+          step="0.01"
+          required
+        />
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="date" className="block font-semibold mb-1">
+            Date <span className="text-red-600">*</span>
+          </label>
+          <input
+            type="date"
+            id="date"
+            name="date"
+            className="w-full rounded border px-3 py-2"
+            value={form.date}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="time" className="block font-semibold mb-1">
+            Time <span className="text-red-600">*</span>
+          </label>
+          <input
+            type="time"
+            id="time"
+            name="time"
+            className="w-full rounded border px-3 py-2"
+            value={form.time}
+            onChange={handleChange}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="timezone" className="block font-semibold mb-1">
+          Timezone
+        </label>
+        <select
+          id="timezone"
+          name="timezone"
+          className="w-full rounded border px-3 py-2"
+          value={form.timezone}
+          onChange={handleChange}
+        >
+          {timezones.map((tz) => (
+            <option key={tz.value} value={tz.value}>
+              {tz.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="description" className="block font-semibold mb-1">
+          Description <span className="text-red-600">*</span>
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          className="w-full rounded border px-3 py-2"
+          rows={4}
+          placeholder="Describe your NFT"
+          value={form.description}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="tags" className="block font-semibold mb-1">Tags</label>
+        <TagsInput
+          form={{ tags: form.tags }}
+          setForm={(updatedForm) => handleTagsChange(updatedForm.tags)}
+          loading={loading}
+        />
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="platform" className="block font-semibold mb-1">
+          Platform
+        </label>
+        <select
+          id="platform"
+          name="platform"
+          className="w-full rounded border px-3 py-2"
+          value={form.platform}
+          onChange={handleChange}
+        >
+          {platformOptions.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="meetLink" className="block font-semibold mb-1">
+          Meeting Link
+        </label>
+        <input
+          type="url"
+          id="meetLink"
+          name="meetLink"
+          className="w-full rounded border px-3 py-2"
+          placeholder="https://..."
+          value={form.meetLink}
+          onChange={handleChange}
+        />
+      </div>
+
+      <div className="mb-4">
+        {!wallet ? (
+          <button
+            onClick={() => setShowWalletModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2"
+          >
+            Connect Wallet
+          </button>
+        ) : (
+          <div className="mb-2">
+            Connected Wallet: <code>{walletAddress}</code>
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={mintNFT}
+        className="bg-green-600 hover:bg-green-700 text-white rounded px-6 py-3"
+        disabled={loading}
+      >
+        {loading ? "Minting..." : "Mint NFT"}
+      </button>
+
+      {showWalletModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
+          onClick={() => setShowWalletModal(false)}
+        >
+          <div
+            className="bg-white rounded p-4 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-4">Select Wallet</h3>
+            {wallets.length === 0 ? (
+              <p>No wallets found. Please install a Cardano wallet extension.</p>
+            ) : (
+              <ul>
+                {wallets.map(({ id, name }) => (
+                  <li key={id} className="mb-2">
+                    <button
+                      onClick={() => handleWalletSelect(id)}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200"
+                    >
+                      {name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              onClick={() => setShowWalletModal(false)}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Example of safe usage of Next.js Link with always defined href */}
+      <div className="mt-6 text-center">
+        {/* Only show link if meetLink is a valid string */}
+        {form.meetLink ? (
+          <Link href={form.meetLink}>
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              Go to Meeting Link
+            </a>
+          </Link>
+        ) : (
+          <p>No meeting link provided yet.</p>
+        )}
+      </div>
+    </main>
+  );
+}

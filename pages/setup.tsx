@@ -1,48 +1,49 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ConnectWallet from '../components/button/ConnectWallet';
-import SocialIcon from '@/components/SocialIcon';
+import SocialIcon from '@/components/social-icon';
 import { FaXTwitter } from 'react-icons/fa6';
 import { FaDiscord } from 'react-icons/fa';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { BsCheck2Circle } from 'react-icons/bs';
+import { BsArrowLeftCircle, BsArrowRightCircle, BsCheck2Circle } from 'react-icons/bs';
 import { auth, db, setDoc, doc } from '../config';
+import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 
 export default function ProfileSetup() {
+  const [step, setStep] = useState(1);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [discordUsername, setDiscordUsername] = useState(null);
-  const [twitterConnected, setTwitterConnected] = useState(false);
   const [twitterUsername, setTwitterUsername] = useState(null);
   const [walletAddress, setWalletAddress] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [user, setUser] = useState(null);
+  const [initStepSet, setInitStepSet] = useState(false); // 🚀 new
+
   const router = useRouter();
 
+  // 🔐 Auth check
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
       if (!firebaseUser) {
         router.replace('/signin');
       } else {
         setUser(firebaseUser);
-        console.log("User authenticated before wallet connect:", firebaseUser); 
       }
       setCheckingAuth(false);
     });
-
     return () => unsubscribe();
   }, [router]);
 
+  // 🌐 Fetch social data
   useEffect(() => {
-    if (!user) return;
+    if (!user || initStepSet) return;
 
     const checkConnections = async () => {
       try {
         const twitterRes = await fetch('/api/get/twitter-status', { method: 'GET', credentials: 'include' });
         if (twitterRes.ok) {
           const twitterData = await twitterRes.json();
-          setTwitterConnected(twitterData.connected);
           if (twitterData.username) {
             setTwitterUsername(twitterData.username);
             setUsername(twitterData.username);
@@ -52,59 +53,43 @@ export default function ProfileSetup() {
         const discordRes = await fetch('/api/get/discord-username', { method: 'GET', credentials: 'include' });
         if (discordRes.ok) {
           const discordData = await discordRes.json();
-          setDiscordUsername(discordData.username);
-          if (discordData.username && !twitterUsername) {
-            setUsername(discordData.username);
+          if (discordData.username) {
+            setDiscordUsername(discordData.username);
+            if (!twitterUsername) setUsername(discordData.username);
           }
         }
+
+        // ✅ Stay on step 3 if any social connected
+        if (!initStepSet && (twitterRes.ok || discordRes.ok)) {
+          setStep(3);
+          setInitStepSet(true);
+        }
+
       } catch (err) {
         console.error('Error checking social connections:', err);
       }
     };
 
     checkConnections();
-  }, [user, twitterUsername]);
-
-  const handleConnectTwitter = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/connect/twitter', { method: 'GET', credentials: 'include' });
-      const data = await res.json();
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      }
-    } catch (err) {
-      alert(`Failed to connect with Twitter: ${err.message}`);
-      setLoading(false);
-    }
-  };
-
-  const handleConnectDiscord = () => {
-    window.location.href = '/api/connect/discord';
-  };
-
-  const handleWalletConnect = (address) => {
-    setWalletAddress(address);
-  };
+  }, [user, twitterUsername, initStepSet]);
 
   const handleProfileSave = async () => {
     if (!walletAddress) {
-      alert('Wallet not connected or nonce is missing.');
+      alert('Wallet not connected.');
       return;
     }
-  
+
     try {
       setLoading(true);
-        const profileData = {
-        uid: user.uid, 
+      const profileData = {
+        uid: user.uid,
         username,
         discordUsername,
         twitterUsername,
         profileImage,
-        walletAddress, 
+        walletAddress,
       };
       await setDoc(doc(db, 'users', user.uid), profileData);
-  
       router.push('/profile');
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -113,149 +98,201 @@ export default function ProfileSetup() {
       setLoading(false);
     }
   };
-  
-
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result);
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+  
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        const base64Image = reader.result;
+        setProfileImage(base64Image);
+        localStorage.setItem('profileImage', base64Image);
+      }
+      // setProfileImage(reader.result);
+    };
+  
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
-    const styleSheet = document.createElement('style');
-    styleSheet.type = 'text/css';
-    styleSheet.innerText = `
-      @keyframes bg-scrolling-reverse {
-        100% { background-position: 50px 50px; }
-      }
-    `;
-    document.head.appendChild(styleSheet);
-    return () => document.head.removeChild(styleSheet);
+    const storedImage = localStorage.getItem('profileImage');
+    if (storedImage) {
+      setProfileImage(storedImage);
+    }
   }, []);
+  
 
-  const bgImage =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC';
-  const currentYear = new Date().getFullYear();
+  const handleConnectTwitter = async () => {
+    try {
+      const res = await fetch('/api/connect/twitter', { method: 'GET', credentials: 'include' });
+      const data = await res.json();
+      if (data.authUrl) window.location.href = data.authUrl;
+    } catch (err) {
+      alert(`Failed to connect Twitter: ${err.message}`);
+    }
+  };
+
+  const handleConnectDiscord = () => {
+    window.location.href = '/api/connect/discord';
+  };
+
+  console.log('profileImage :' + profileImage)
+
+  const steps = [
+    {
+      title: 'Upload Avatar',
+      content: (
+        <div className="space-y-4 pt-10 pb-2 flex justify-center items-start gap-4 w-full">
+          <div className="avatar">
+            <div className="w-24 h-24 rounded-lg overflow-hidden">
+              {profileImage ? (
+                <img src={profileImage || './img/emblem.png'} alt="Profile" className="object-cover w-full h-full" />
+              ) : (
+                <div className="bg-gray-300 w-full h-full flex items-center justify-center text-white">No Image</div>
+              )}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <p className='text-sm'>Please choose your special avatar 🥳</p>
+            <input type="file" onChange={handleImageChange} accept="image/*" className="file-input file-input-sm file-input-bordered" />
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Set Username',
+      content: (
+        <div className="space-y-4 pt-10 pb-2 flex gap-4 w-full">
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter a username"
+            className="input input-bordered w-full"
+          />
+        </div>
+      ),
+    },
+    {
+      title: 'Connect Social Media',
+      content: (
+        <div className="space-y-3 py-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <button
+              className="btn w-full bg-black text-white flex justify-between items-center px-4 py-3 rounded-lg"
+              onClick={handleConnectTwitter}
+            >
+              <span>{twitterUsername ? `@${twitterUsername}` : 'Connect Twitter'}</span>
+              <FaXTwitter />
+            </button>
+            <button
+              className="btn w-full bg-indigo-600 text-white flex justify-between items-center px-4 py-3 rounded-lg"
+              onClick={handleConnectDiscord}
+            >
+              <span>{discordUsername || 'Connect Discord'}</span>
+              <FaDiscord />
+            </button>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Connect Wallet',
+      content: (
+        <div className="space-y-3 py-5">
+          <ConnectWallet onConnect={(address) => setWalletAddress(address)} />
+        </div>
+      )
+    },
+  ];
 
   if (checkingAuth) {
-    return <div className="h-screen w-full flex justify-center items-center text-lg">Checking authentication...</div>;
+    return (
+      <div className="h-screen flex justify-center items-center text-lg">Checking authentication...</div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full h-screen text-gray-800">
-        <div className="flex justify-between items-start gap-5"
-          style={{
-            fontFamily: 'Exo, Ubuntu, "Segoe UI", Helvetica, Arial, sans-serif',
-            background: `url(${bgImage}) repeat 0 0`,
-            animation: 'bg-scrolling-reverse 0.92s linear infinite',
-          }}>
-          <div className="bg-white w-full max-w-xl shrink-0 shadow-2xl items-center py-5 px-10 overflow-y-auto" style={{ maxHeight: '100vh' }}>
-            <div className="flex justify-between items-center">
-              <img src="/img/logo.png" alt="logo" width={200} />
-            </div>
+    <div className="min-h-screen bg-white text-black">
+      <div className="flex p-5 gap-5">
+        {/* Sidebar */}
+        <div
+          className="hidden md:flex max-w-7xl bg-cover bg-center items-center h-screen justify-center text-white rounded-xl"
+          style={{ backgroundImage: "url('./img/bg-signin.avif')" }}
+        >
+          <div className="space-y-4 w-full px-10 text-end">
+            <p className="text-sm uppercase tracking-widest">- A Wise Quote -</p>
+            <h1 className="text-4xl font-bold leading-10">Your journey continues here</h1>
+            <p className="text-lg font-semibold text-white/80">Sign in to unlock new possibilities.</p>
+          </div>
+        </div>
 
-            <div className="pt-16 pb-5">
-              <h1 className="text-3xl font-extrabold">Complete your profile</h1>
-              <p className="text-sm font-medium">Fill in your details below</p>
-            </div>
-
-            <div className="py-4 text-center">
-              <label className="text-black text-sm">Profile Image</label>
-              <div className="flex justify-center mt-3">
-                {profileImage ? (
-                  <img src={profileImage} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-white">
-                    <span>No Image</span>
-                  </div>
-                )}
-              </div>
-              <input type="file" onChange={handleImageChange} accept="image/*" className="mt-2 text-center" />
-            </div>
-
-            <div className="py-2">
-              <label className="form-control">
-                <div className="label">
-                  <span className="label-text text-black">Username</span>
-                </div>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter a username"
-                  className="input bg-transparent input-bordered w-full"
-                />
-              </label>
-            </div>
-
-            <div className="space-y-4 mt-4">
-              <button
-                className="btn w-full bg-gray-500 text-white shadow-xl flex justify-between"
-                onClick={handleConnectTwitter}
-                disabled={loading}
-              >
-                <span>{twitterUsername ? `@${twitterUsername}` : 'Connect Twitter'}</span>
-                <FaXTwitter />
-              </button>
-
-              <button
-                className="btn w-full bg-[#5865F2] text-white shadow-xl flex justify-between"
-                onClick={handleConnectDiscord}
-                disabled={loading}
-              >
-                <span>{discordUsername || 'Connect Discord'}</span>
-                <FaDiscord />
-              </button>
-
-              <ConnectWallet
-                onConnect={handleWalletConnect}
-                onVerified={(address) => {
-                  console.log('Wallet verified:', address);
-                  setWalletAddress(address);
-                }}
-              />
-            </div>
-
-            <div className="py-3">
-              <button
-                className="btn w-full bg-black text-white hover:bg-gray-800"
-                onClick={handleProfileSave}
-                disabled={loading}
-              >
-                {loading ? 'Saving...' : 'Save Profile'}
-                <BsCheck2Circle className="text-lg ml-2" />
-              </button>
-            </div>
-
-            <footer className="footer bg-white text-black items-center px-10 py-4 border-t mt-4">
-              <aside className="grid-flow-col items-center">
-                <img src="/img/emblem.png" alt="" width={46} />
-                <p>Copyright © {currentYear} - All rights reserved</p>
-              </aside>
-              <nav className="grid-flow-col gap-4 md:place-self-center md:justify-self-end">
-                <SocialIcon href={process.env.URL_TWITTER} type="twitter" />
-                <SocialIcon href={process.env.URL_DISCORD} type="discord" />
-                <SocialIcon href={process.env.URL_TELEGRAM} type="telegram" />
-              </nav>
-            </footer>
+        {/* Main */}
+        <div className="flex-1 p-6 bg-white rounded-xl space-y-6">
+          <div className="p-8 flex justify-center">
+            <img src="/img/logo.png" alt="logo" width={160} />
           </div>
 
-          <div className="bg-transparent text-center p-48">
-            <h1 className="text-4xl font-semibold">
-              <span className="text-blue-800">Cardano Hub</span> <span className="text-red-600">Indonesia</span>
-            </h1>
-            <DotLottieReact
-              src="https://lottie.host/36fcbde8-8edd-4016-ba3e-30b30b4cee21/pLkaTa0nFX.lottie"
-              loop
-              autoplay
-            />
-            <p className="text-lg font-medium">Start engaging users and communities!</p>
+          {/* Steps UI */}
+          <ul className="steps steps-horizontal px-10 w-full">
+            {steps.map((s, index) => (
+              <li
+                key={index}
+                className={`step ${index + 1 <= step ? 'step-primary' : ''}`}
+                onClick={() => setStep(index + 1)}
+              >
+                {s.title}
+              </li>
+            ))}
+          </ul>
+
+          {/* Step Content */}
+          <div className="flex flex-col items-center justify-center py-2">
+            <h2 className="text-2xl font-semibold">{steps[step - 1].title}</h2>
+            <div className="w-full">{steps[step - 1].content}</div>
+
+            <div className={`flex items-center w-full gap-2 py-4 ${step === 1 ? 'justify-end' : 'justify-between'}`}>
+              {step > 1 && (
+                <button className="btn" onClick={() => setStep(step - 1)}>
+                  <BsArrowLeftCircle className="mr-1" /> Back
+                </button>
+              )}
+
+              {step < steps.length ? (
+                <button className="btn bg-black text-white flex items-center" onClick={() => setStep(step + 1)}>
+                  Next <BsArrowRightCircle className="ml-1" />
+                </button>
+              ) : (
+                <button
+                  className="btn btn-success text-white hover:bg-gray-800 flex items-center"
+                  onClick={handleProfileSave}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="loading loading-dots loading-sm"></span>
+                  ) : (
+                    'Save Profile'
+                  )}
+                  <BsCheck2Circle className="ml-1" />
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Footer */}
+          <footer className="footer bg-white text-black items-center px-10 py-4 border-t sticky bottom-0 top-full">
+            <aside className="grid-flow-col items-center">
+              <img src="/img/emblem.png" alt="" width={46} />
+              <p>Copyright © {new Date().getFullYear()} - All rights reserved</p>
+            </aside>
+            <nav className="grid-flow-col gap-4 md:place-self-center md:justify-self-end">
+              <SocialIcon href={process.env.URL_TWITTER} type="twitter" />
+              <SocialIcon href={process.env.URL_DISCORD} type="discord" />
+              <SocialIcon href={process.env.URL_TELEGRAM} type="telegram" />
+            </nav>
+          </footer>
         </div>
       </div>
     </div>
