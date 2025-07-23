@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: false,
   typescript: {
-    ignoreBuildErrors: true, 
+    ignoreBuildErrors: true,
   },
   webpack: (config, options) => {
     config.experiments = {
@@ -30,7 +30,12 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'ipfs.io',
-        pathname: '/ipfs/**', 
+        pathname: '/ipfs/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**', 
+        pathname: '/**',
       },
     ],
   },
